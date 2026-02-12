@@ -3,7 +3,7 @@
  * 오프라인 캐싱 및 네트워크 전략 관리
  */
 
-const CACHE_NAME = 'jdong-reservation-v2';
+const CACHE_NAME = 'jdong-reservation-v3';
 const STATIC_ASSETS = [
   './',
   './index.html',
