@@ -842,6 +842,126 @@
       color: var(--dark);
       font-weight: 600;
     }
+
+    /* ─── Install Banner ───────────────────────────── */
+    .install-banner {
+      display: none;
+      margin: 0 24px 0;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%);
+      border-radius: var(--radius-md);
+      color: var(--white);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .install-banner.show {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .install-banner .install-icon {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .install-banner .install-text {
+      flex: 1;
+    }
+
+    .install-banner .install-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .install-banner .install-desc {
+      font-size: 12px;
+      opacity: 0.85;
+      line-height: 1.4;
+    }
+
+    .install-banner .install-btn {
+      background: var(--white);
+      color: var(--green);
+      border: none;
+      border-radius: var(--radius-full);
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition);
+      font-family: inherit;
+    }
+
+    .install-banner .install-btn:active {
+      transform: scale(0.95);
+    }
+
+    .install-banner .install-close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      padding: 0;
+    }
+
+    /* ─── iOS Guide Modal ──────────────────────────── */
+    .ios-guide-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .ios-guide-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .ios-guide-step .step-num {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      background: var(--green);
+      color: var(--white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .ios-guide-step .step-text {
+      font-size: 14px;
+      color: var(--dark);
+      line-height: 1.5;
+      padding-top: 3px;
+    }
+
+    .ios-guide-step .step-text strong {
+      color: var(--green);
+    }
   </style>
 </head>
 <body>
@@ -863,7 +983,20 @@
       <div class="subtitle" id="todayDate"></div>
     </div>
 
-    <div class="section">
+    <!-- 앱 설치 배너 -->
+    <div class="install-banner" id="installBanner">
+      <button class="install-close" onclick="dismissInstallBanner()" aria-label="닫기">&times;</button>
+      <div class="install-icon">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
+      </div>
+      <div class="install-text">
+        <div class="install-title">홈 화면에 앱 설치</div>
+        <div class="install-desc">더 빠르게 예약할 수 있어요</div>
+      </div>
+      <button class="install-btn" id="installBtn" onclick="handleInstallClick()">설치</button>
+    </div>
+
+    <div class="section" style="padding-top:16px">
       <div class="section-title">층 선택</div>
       <div class="floor-grid stagger" id="floorGrid">
         <div class="floor-card" data-floor="6F" onclick="selectFloor(this)">
@@ -1032,6 +1165,31 @@
     </div>
   </div>
 
+  <!-- ════════ iOS 설치 안내 모달 ════════ -->
+  <div class="modal-overlay" id="modalIosGuide">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h3>홈 화면에 앱 추가하기</h3>
+      <div class="ios-guide-steps">
+        <div class="ios-guide-step">
+          <div class="step-num">1</div>
+          <div class="step-text">하단 브라우저 메뉴에서<br><strong>공유 버튼</strong> <span style="font-size:18px">&#x1F4E4;</span> 을 탭하세요</div>
+        </div>
+        <div class="ios-guide-step">
+          <div class="step-num">2</div>
+          <div class="step-text">목록을 스크롤하여<br><strong>"홈 화면에 추가"</strong>를 탭하세요</div>
+        </div>
+        <div class="ios-guide-step">
+          <div class="step-num">3</div>
+          <div class="step-text">오른쪽 상단 <strong>"추가"</strong>를 탭하면<br>홈 화면에 앱이 설치됩니다</div>
+        </div>
+      </div>
+      <div class="btn-group" style="margin-top:24px">
+        <button class="btn btn-primary" onclick="closeModal('modalIosGuide')">확인</button>
+      </div>
+    </div>
+  </div>
+
 </div>
 
 <script>
@@ -1063,6 +1221,7 @@ const state = {
 document.addEventListener('DOMContentLoaded', function() {
   setTodayDate();
   showScreen('screenHome');
+  initInstallBanner();
 
   if ('serviceWorker' in navigator) {
     navigator.serviceWorker.register('service-worker.js').catch(function() {});
@@ -1897,6 +2056,78 @@ async function sha256(message) {
   const hashArray = Array.from(new Uint8Array(hashBuffer));
   return hashArray.map(function(b) { return b.toString(16).padStart(2, '0'); }).join('');
 }
+
+// ═══════════════════════════════════════════════════════
+// PWA 앱 설치 배너
+// ═══════════════════════════════════════════════════════
+var deferredInstallPrompt = null;
+
+function isIos() {
+  return /iphone|ipad|ipod/i.test(navigator.userAgent);
+}
+
+function isInStandaloneMode() {
+  return window.matchMedia('(display-mode: standalone)').matches ||
+    window.navigator.standalone === true;
+}
+
+function initInstallBanner() {
+  // 이미 앱으로 실행 중이면 표시 안 함
+  if (isInStandaloneMode()) return;
+
+  // 사용자가 배너를 닫은 적 있으면 표시 안 함
+  var dismissed = localStorage.getItem('installBannerDismissed');
+  if (dismissed) {
+    var dismissedTime = parseInt(dismissed, 10);
+    // 7일 지나면 다시 표시
+    if (Date.now() - dismissedTime < 7 * 24 * 60 * 60 * 1000) return;
+  }
+
+  // Android Chrome: beforeinstallprompt 이벤트 수신
+  window.addEventListener('beforeinstallprompt', function(e) {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    showInstallBanner();
+  });
+
+  // iOS: 바로 배너 표시
+  if (isIos()) {
+    showInstallBanner();
+  }
+}
+
+function showInstallBanner() {
+  var banner = document.getElementById('installBanner');
+  banner.classList.add('show');
+}
+
+function handleInstallClick() {
+  if (deferredInstallPrompt) {
+    // Android: 네이티브 설치 프롬프트 실행
+    deferredInstallPrompt.prompt();
+    deferredInstallPrompt.userChoice.then(function(result) {
+      if (result.outcome === 'accepted') {
+        document.getElementById('installBanner').classList.remove('show');
+      }
+      deferredInstallPrompt = null;
+    });
+  } else if (isIos()) {
+    // iOS: 설치 가이드 모달 표시
+    openModal('modalIosGuide');
+  }
+}
+
+function dismissInstallBanner() {
+  document.getElementById('installBanner').classList.remove('show');
+  localStorage.setItem('installBannerDismissed', String(Date.now()));
+}
+
+// 설치 완료 감지
+window.addEventListener('appinstalled', function() {
+  document.getElementById('installBanner').classList.remove('show');
+  deferredInstallPrompt = null;
+  showToast('앱이 설치되었습니다!', 'success');
+});
 </script>
 
 </body>
