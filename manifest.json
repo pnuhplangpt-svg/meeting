@@ -2,12 +2,12 @@
   "name": "J동 회의실 예약",
   "short_name": "회의실예약",
   "description": "병원 J동 6~9층 미니 회의실 예약 시스템",
-  "start_url": "/meeting/index.html",
+  "start_url": "./index.html",
   "display": "standalone",
   "background_color": "#ffffff",
   "theme_color": "#006241",
   "orientation": "portrait",
-  "scope": "/meeting/",
+  "scope": "./",
   "lang": "ko",
   "categories": ["productivity", "business"],
   "icons": [
@@ -25,4 +25,3 @@
     }
   ]
 }
-
