@@ -1248,7 +1248,7 @@
       display: none;
       height: 100vh;
       height: 100dvh;
-      background: #fafafa;
+      background: var(--white);
       overflow: hidden;
     }
 
@@ -1357,6 +1357,7 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      gap: 0;
     }
 
     /* ── 좌측/상단: 현재 상태 패널 ── */
@@ -1368,6 +1369,7 @@
       position: relative;
       background: var(--white);
       border-left: 6px solid var(--gray-mid);
+      overflow-y: auto;
     }
 
     .display-panel-status.state-inuse {
@@ -1447,7 +1449,6 @@
       overflow-y: auto;
       padding: 0;
       background: var(--white);
-      border-top: 1px solid var(--gray-light);
     }
 
     .ds-row {
@@ -1512,11 +1513,12 @@
 
     .display-refresh-indicator {
       text-align: center;
-      padding: 6px;
+      padding: 4px;
       font-size: 10px;
       color: var(--gray-mid);
-      background: #fafafa;
+      background: var(--white);
       flex-shrink: 0;
+      border-top: 1px solid var(--gray-light);
     }
 
     /* ═══════════════════════════════════════════════════
@@ -1605,16 +1607,22 @@
         overflow-y: auto;
       }
 
-      /* ── 디스플레이: 가로 시 좌우 분할 (현황 60% / 시간표 40%) ── */
+      /* ── 디스플레이: 가로 시 좌우 꽉 찬 분할 (현황 60% / 시간표 40%) ── */
+      .display-screen {
+        background: var(--white);
+      }
+
       .display-body {
         flex-direction: row;
       }
 
       .display-panel-status {
         width: 60%;
-        min-width: 320px;
+        flex-shrink: 0;
         padding: 40px 48px;
         border-left: 8px solid var(--gray-mid);
+        border-right: 1px solid var(--gray-light);
+        max-height: none;
       }
 
       .display-panel-status.state-inuse {
@@ -1631,11 +1639,15 @@
 
       .dp-time-range {
         font-size: 20px;
-        margin-bottom: 12px;
+        margin-bottom: 14px;
       }
 
       .dp-state-text {
         font-size: 56px;
+      }
+
+      .dp-meeting-info {
+        margin-top: 20px;
       }
 
       .dp-meeting-team {
@@ -1664,9 +1676,8 @@
 
       .display-panel-schedule {
         width: 40%;
-        border-top: none;
-        border-left: 1px solid var(--gray-light);
         flex: none;
+        overflow-y: auto;
       }
 
       /* 시간표 컴팩트화 (40% 영역에 맞춤) */
@@ -1696,17 +1707,38 @@
       .ds-block-user {
         font-size: 10px;
       }
+
+      .display-refresh-indicator {
+        display: none;
+      }
     }
 
     /* ═══════════════════════════════════════════════════
        세로 모드 (Portrait)
        ═══════════════════════════════════════════════════ */
     @media (orientation: portrait) {
+      .display-body {
+        flex-direction: column;
+      }
+
       .display-panel-status {
         flex-shrink: 0;
-        max-height: 45vh;
-        overflow-y: auto;
-        padding: 24px 28px;
+        max-height: 40vh;
+        padding: 28px 32px;
+        border-left: 6px solid var(--gray-mid);
+        border-bottom: 1px solid var(--gray-light);
+      }
+
+      .display-panel-status.state-inuse {
+        border-left-color: var(--red);
+      }
+
+      .display-panel-status.state-available {
+        border-left-color: var(--green);
+      }
+
+      .display-panel-status.state-soon {
+        border-left-color: #f5a623;
       }
 
       .dp-state-text {
@@ -1721,8 +1753,19 @@
         font-size: 15px;
       }
 
+      .dp-meeting-time {
+        font-size: 15px;
+      }
+
+      .dp-next {
+        font-size: 14px;
+        margin-top: 16px;
+        padding-top: 12px;
+      }
+
       .display-panel-schedule {
         flex: 1;
+        border-top: none;
       }
     }
   </style>
@@ -2028,6 +2071,9 @@
         <span class="dh-name">J동 회의실</span>
       </div>
       <div class="dh-right">
+        <button class="dh-fullscreen-btn" onclick="loadDisplayData()" title="새로고침">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        </button>
         <span class="dh-date" id="displayDate">--</span>
         <span class="dh-clock" id="displayClock">--:--</span>
         <button class="dh-fullscreen-btn" id="btnFullscreen" onclick="toggleDisplayFullscreen()" title="전체화면">
