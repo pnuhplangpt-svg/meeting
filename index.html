@@ -1364,10 +1364,10 @@
       display: flex;
       flex-direction: column;
       justify-content: center;
-      padding: 28px 32px;
+      padding: 32px 36px;
       position: relative;
       background: var(--white);
-      border-left: 5px solid var(--gray-mid);
+      border-left: 6px solid var(--gray-mid);
     }
 
     .display-panel-status.state-inuse {
@@ -1383,16 +1383,17 @@
     }
 
     .dp-time-range {
-      font-size: 14px;
+      font-size: 16px;
       color: var(--gray-text);
-      margin-bottom: 8px;
+      margin-bottom: 10px;
+      letter-spacing: 0.5px;
     }
 
     .dp-state-text {
-      font-size: 32px;
+      font-size: 40px;
       font-weight: 800;
       color: var(--dark);
-      line-height: 1.2;
+      line-height: 1.15;
     }
 
     .dp-state-text.inuse {
@@ -1404,38 +1405,40 @@
     }
 
     .dp-meeting-info {
-      margin-top: 12px;
+      margin-top: 16px;
     }
 
     .dp-meeting-team {
-      font-size: 18px;
+      font-size: 22px;
       font-weight: 700;
       color: var(--dark);
     }
 
     .dp-meeting-user {
-      font-size: 14px;
+      font-size: 16px;
       color: var(--gray-text);
-      margin-top: 2px;
+      margin-top: 4px;
     }
 
     .dp-meeting-time {
-      font-size: 14px;
+      font-size: 16px;
       color: var(--green);
       font-weight: 600;
-      margin-top: 6px;
+      margin-top: 8px;
     }
 
     .dp-next {
-      margin-top: 20px;
-      padding-top: 16px;
+      margin-top: 24px;
+      padding-top: 18px;
       border-top: 1px solid var(--gray-light);
-      font-size: 14px;
+      font-size: 16px;
       color: var(--gray-text);
+      line-height: 1.6;
     }
 
     .dp-next strong {
       color: var(--dark);
+      font-size: 17px;
     }
 
     /* ── 우측/하단: 시간표 패널 ── */
@@ -1602,15 +1605,16 @@
         overflow-y: auto;
       }
 
-      /* ── 디스플레이: 가로 시 좌우 분할 ── */
+      /* ── 디스플레이: 가로 시 좌우 분할 (현황 60% / 시간표 40%) ── */
       .display-body {
         flex-direction: row;
       }
 
       .display-panel-status {
-        width: 40%;
-        min-width: 280px;
-        border-left: 6px solid var(--gray-mid);
+        width: 60%;
+        min-width: 320px;
+        padding: 40px 48px;
+        border-left: 8px solid var(--gray-mid);
       }
 
       .display-panel-status.state-inuse {
@@ -1625,14 +1629,72 @@
         border-left-color: #f5a623;
       }
 
-      .display-panel-schedule {
-        border-top: none;
-        border-left: 1px solid var(--gray-light);
-        flex: 1;
+      .dp-time-range {
+        font-size: 20px;
+        margin-bottom: 12px;
       }
 
       .dp-state-text {
-        font-size: 36px;
+        font-size: 56px;
+      }
+
+      .dp-meeting-team {
+        font-size: 28px;
+      }
+
+      .dp-meeting-user {
+        font-size: 20px;
+        margin-top: 6px;
+      }
+
+      .dp-meeting-time {
+        font-size: 20px;
+        margin-top: 10px;
+      }
+
+      .dp-next {
+        font-size: 19px;
+        margin-top: 28px;
+        padding-top: 20px;
+      }
+
+      .dp-next strong {
+        font-size: 20px;
+      }
+
+      .display-panel-schedule {
+        width: 40%;
+        border-top: none;
+        border-left: 1px solid var(--gray-light);
+        flex: none;
+      }
+
+      /* 시간표 컴팩트화 (40% 영역에 맞춤) */
+      .ds-time-label {
+        width: 52px;
+        min-width: 52px;
+        padding: 6px 8px 6px 12px;
+        font-size: 12px;
+      }
+
+      .ds-slot {
+        padding: 4px 8px;
+      }
+
+      .ds-row {
+        min-height: 40px;
+      }
+
+      .ds-block {
+        padding: 6px 10px;
+      }
+
+      .ds-block-team {
+        font-size: 12px;
+      }
+
+      .ds-block-user {
+        font-size: 10px;
       }
     }
 
@@ -1644,6 +1706,19 @@
         flex-shrink: 0;
         max-height: 45vh;
         overflow-y: auto;
+        padding: 24px 28px;
+      }
+
+      .dp-state-text {
+        font-size: 36px;
+      }
+
+      .dp-meeting-team {
+        font-size: 20px;
+      }
+
+      .dp-meeting-user {
+        font-size: 15px;
       }
 
       .display-panel-schedule {
