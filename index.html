@@ -1473,6 +1473,14 @@
       height: 80px;
       border-radius: 10px;
       flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .dp-qr-img canvas,
+    .dp-qr-img img {
+      display: block;
+      width: 100%;
+      height: 100%;
     }
 
     .dp-qr-text {
@@ -1668,10 +1676,13 @@
       .display-panel-status {
         width: 60%;
         flex-shrink: 0;
-        padding: 40px 48px;
+        padding: 32px 40px;
         border-left: 8px solid var(--gray-mid);
         max-height: none;
         border-right: none;
+        display: flex;
+        flex-direction: column;
+        overflow-y: auto;
       }
 
       .display-panel-status.state-inuse {
@@ -1760,18 +1771,18 @@
       }
 
       .dp-qr-area {
-        margin-top: 28px;
-        padding-top: 20px;
-        gap: 18px;
+        margin-top: auto;
+        padding-top: 16px;
+        gap: 14px;
       }
 
       .dp-qr-img {
-        width: 100px;
-        height: 100px;
+        width: 72px;
+        height: 72px;
       }
 
       .dp-qr-text {
-        font-size: 20px;
+        font-size: 16px;
       }
     }
 
@@ -3376,10 +3387,11 @@ container.innerHTML = html;
 var qrEl = document.getElementById('dpQrCode');
 if (qrEl && window.QRCode) {
   qrEl.innerHTML = '';
+  var qrSize = Math.min(128, qrEl.offsetWidth || 80);
   new QRCode(qrEl, {
     text: qrUrl,
-    width: 200,
-    height: 200
+    width: qrSize,
+    height: qrSize
   });
 } else {
   // 라이브러리 로딩 실패 시 안내
