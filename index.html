@@ -1051,6 +1051,7 @@ const state = {
   calendarYear: new Date().getFullYear(),
   calendarMonth: new Date().getMonth(),
   reservations: [],
+  currentReservedSlots: [],
   currentTab: 'all',
   pendingAction: null,
   pendingId: null
@@ -1316,6 +1317,8 @@ async function loadTimeSlots() {
 
   let reservedSlots = [];
 
+  showLoading(true);
+
   try {
     const res = await apiGet('getReservations', {
       date: state.selectedDate,
@@ -1332,6 +1335,8 @@ async function loadTimeSlots() {
     // 오프라인 모드: 예약 현황 없이 표시
   }
 
+  showLoading(false);
+  state.currentReservedSlots = reservedSlots;
   renderTimeGrid(reservedSlots);
   updateConfirmButton();
 }
@@ -1383,6 +1388,19 @@ function addMinutes(timeStr, minutes) {
   return String(newH).padStart(2, '0') + ':' + String(newM).padStart(2, '0');
 }
 
+// 선택한 시작~종료 구간 내에 예약된 슬롯이 있는지 확인
+function hasConflictInRange(startTime, endTime) {
+  var reserved = state.currentReservedSlots || [];
+  for (var i = 0; i < reserved.length; i++) {
+    var r = reserved[i];
+    // 구간이 겹치는지 확인: 선택 시작 < 예약 종료 AND 선택 종료 > 예약 시작
+    if (startTime < r['종료시간'] && endTime > r['시작시간']) {
+      return true;
+    }
+  }
+  return false;
+}
+
 function selectTime(time) {
   const hint = document.getElementById('timeHint');
 
@@ -1399,9 +1417,19 @@ function selectTime(time) {
       state.selectedEndTime = null;
       hint.textContent = '종료 시간을 선택하세요 (시작: ' + time + ')';
     } else {
-      state.selectedEndTime = addMinutes(time, 30);
-      hint.textContent = state.selectedStartTime + ' ~ ' + state.selectedEndTime;
-      showFormSection();
+      var candidateEnd = addMinutes(time, 30);
+      // 선택 구간 내에 이미 예약된 시간이 있는지 확인
+      if (hasConflictInRange(state.selectedStartTime, candidateEnd)) {
+        showToast('선택한 시간 구간에 이미 예약이 있습니다.', 'error');
+        // 시작 시간 리셋
+        state.selectedStartTime = null;
+        state.selectedEndTime = null;
+        hint.textContent = '시작 시간을 선택하세요';
+      } else {
+        state.selectedEndTime = candidateEnd;
+        hint.textContent = state.selectedStartTime + ' ~ ' + state.selectedEndTime;
+        showFormSection();
+      }
     }
   } else {
     // 이미 둘 다 선택됨 → 리셋
@@ -1413,11 +1441,6 @@ function selectTime(time) {
   }
 
   // 그리드 다시 렌더링
-  const reservedBtns = [];
-  document.querySelectorAll('.time-slot.reserved').forEach(function(btn) {
-    reservedBtns.push(btn.dataset.time);
-  });
-
   document.querySelectorAll('.time-slot').forEach(function(btn) {
     const t = btn.dataset.time;
     btn.classList.remove('selected', 'in-range');
