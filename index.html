@@ -1591,8 +1591,7 @@ const state = {
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function() {
   setTodayDate();
-  showScreen('screenHome');
-  loadRoomsForHome();
+  navigateTo('screenHome');
   initInstallBanner();
 
   if ('serviceWorker' in navigator) {
@@ -1682,6 +1681,10 @@ function showScreen(id) {
 }
 
 function navigateTo(screenId) {
+  // 화면별 최신 데이터 로드
+  if (screenId === 'screenHome') {
+    loadRoomsForHome();
+  }
   if (screenId === 'screenMyReservations') {
     loadReservations();
   }
@@ -1694,15 +1697,11 @@ function resetAndGoHome() {
   state.selectedStartTime = null;
   state.selectedEndTime = null;
 
-  document.querySelectorAll('.floor-card').forEach(function(c) {
-    c.classList.remove('selected');
-  });
-
   const btn = document.getElementById('btnStartReserve');
   btn.disabled = true;
   btn.textContent = '층을 선택해주세요';
 
-  showScreen('screenHome');
+  navigateTo('screenHome');
 }
 
 // ═══════════════════════════════════════════════════════
