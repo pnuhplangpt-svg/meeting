@@ -3404,37 +3404,44 @@ function renderDisplaySchedule(reservations) {
   var container = document.getElementById('displaySchedule');
   var now = new Date();
   var currentHour = now.getHours();
+  var currentMin = now.getMinutes();
   var currentTime = String(currentHour).padStart(2, '0') + ':' +
-    String(now.getMinutes()).padStart(2, '0');
+    String(currentMin).padStart(2, '0');
 
-  // 운영시간: 07:00 ~ 21:00, 현재 기준 6시간 표시
   var OPEN_HOUR = 7;
   var CLOSE_HOUR = 21;
-  var VISIBLE_HOURS = 6;
+  var VISIBLE_SLOTS = 12; // 30분 × 12 = 6시간
 
-  // 시작 시각 계산: 현재 시각 기준, 운영시간 내 클램프
-  var startHour = Math.max(OPEN_HOUR, Math.min(currentHour, CLOSE_HOUR - VISIBLE_HOURS));
-  var endHour = Math.min(CLOSE_HOUR, startHour + VISIBLE_HOURS);
+  // 현재 시각 기준 시작 슬롯 계산 (30분 단위로 내림)
+  var nowSlot = currentHour * 2 + Math.floor(currentMin / 30);
+  var openSlot = OPEN_HOUR * 2;
+  var closeSlot = CLOSE_HOUR * 2;
+  var startSlot = Math.max(openSlot, Math.min(nowSlot, closeSlot - VISIBLE_SLOTS));
+  var endSlot = Math.min(closeSlot, startSlot + VISIBLE_SLOTS);
 
-  // 시간대별 예약 수집 (1시간 블록 기준)
-  var hourMap = {};
+  // 30분 슬롯별 예약 매핑
+  var slotMap = {};
   reservations.forEach(function(r) {
     var sParts = r['시작시간'].split(':');
     var eParts = r['종료시간'].split(':');
     var sMin = parseInt(sParts[0]) * 60 + parseInt(sParts[1]);
     var eMin = parseInt(eParts[0]) * 60 + parseInt(eParts[1]);
 
-    for (var m = sMin; m < eMin; m += 60) {
-      var h = Math.floor(m / 60);
-      if (!hourMap[h]) hourMap[h] = [];
-      var already = hourMap[h].some(function(x) { return x.start === r['시작시간'] && x.team === r['팀명']; });
+    for (var m = sMin; m < eMin; m += 30) {
+      var slotH = Math.floor(m / 60);
+      var slotM = m % 60;
+      var slotKey = String(slotH).padStart(2, '0') + ':' + String(slotM).padStart(2, '0');
+      if (!slotMap[slotKey]) slotMap[slotKey] = [];
+      var already = slotMap[slotKey].some(function(x) {
+        return x.start === r['시작시간'] && x.team === r['팀명'];
+      });
       if (!already) {
-        hourMap[h].push({
+        slotMap[slotKey].push({
           team: r['팀명'],
           user: r['예약자'],
           start: r['시작시간'],
           end: r['종료시간'],
-          isStart: (parseInt(sParts[0]) === h),
+          isStart: (r['시작시간'] === slotKey),
           isActive: (currentTime >= r['시작시간'] && currentTime < r['종료시간']),
           isPast: (currentTime >= r['종료시간'])
         });
@@ -3442,13 +3449,15 @@ function renderDisplaySchedule(reservations) {
     }
   });
 
+  // 30분 단위 행 렌더링
   var html = '';
-  for (var h = startHour; h < endHour; h++) {
-    var hh = String(h).padStart(2, '0');
-    var label = hh + ':00';
-    var isNowHour = (h === currentHour);
-    var rowCls = 'ds-row' + (isNowHour ? ' now' : '');
-    var items = hourMap[h] || [];
+  for (var s = startSlot; s < endSlot; s++) {
+    var h = Math.floor(s / 2);
+    var m = (s % 2) * 30;
+    var label = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+    var isNowSlot = (s === nowSlot);
+    var rowCls = 'ds-row' + (isNowSlot ? ' now' : '');
+    var items = slotMap[label] || [];
 
     html += '<div class="' + rowCls + '">';
     html += '<div class="ds-time-label">' + label + '</div>';
