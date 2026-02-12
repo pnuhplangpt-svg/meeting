@@ -3359,17 +3359,30 @@ function renderDisplayStatus(reservations) {
       '<div class="dp-next" style="margin-top:16px;">오늘 남은 예약이 없습니다</div>';
   }
 
-  // QR 코드 영역 추가 (예약 앱 바로가기)
-  var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '');
-  var qrSrc = 'https://chart.googleapis.com/chart?chs=200x200&cht=qr&choe=UTF-8&chl=' + encodeURIComponent(qrUrl);
+// QR 코드 영역 추가 (예약 앱 바로가기)
+var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '');
 
-  html +=
-    '<div class="dp-qr-area">' +
-      '<img class="dp-qr-img" src="' + qrSrc + '" alt="예약 QR" />' +
-      '<div class="dp-qr-text">QR 스캔하여 예약하기</div>' +
-    '</div>';
+html +=
+  '<div class="dp-qr-area">' +
+    '<div id="dpQrCode" class="dp-qr-img"></div>' +
+    '<div class="dp-qr-text">QR 스캔하여 예약하기</div>' +
+  '</div>';
 
-  container.innerHTML = html;
+container.innerHTML = html;
+
+// ✅ QR 생성 (외부 API 호출 없음)
+var qrEl = document.getElementById('dpQrCode');
+if (qrEl && window.QRCode) {
+  qrEl.innerHTML = '';
+  new QRCode(qrEl, {
+    text: qrUrl,
+    width: 200,
+    height: 200
+  });
+} else {
+  // 라이브러리 로딩 실패 시 안내
+  if (qrEl) qrEl.textContent = 'QR 라이브러리를 불러오지 못했습니다.';
+}
 }
 
 function renderDisplaySchedule(reservations) {
