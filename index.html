@@ -1545,8 +1545,8 @@
     }
 
     .ds-slot {
-      flex: 1;
-      padding: 8px 16px;
+      grid-column: 2;
+      padding: 4px 16px;
       display: flex;
       align-items: center;
     }
@@ -1580,7 +1580,7 @@
       margin-top: 2px;
     }
 
-    .ds-row.now .ds-time-label {
+    .ds-time-label.now {
       color: var(--green);
       font-weight: 800;
     }
@@ -1761,11 +1761,11 @@
         min-width: 76px;
         font-size: 20px;
         font-weight: 700;
-        padding: 10px 14px;
+        padding: 0 14px;
       }
 
       .ds-slot {
-        padding: 8px 14px;
+        padding: 4px 14px;
       }
 
       .ds-block {
@@ -3423,79 +3423,108 @@ function renderDisplaySchedule(reservations) {
 
   var OPEN_HOUR = 7;
   var CLOSE_HOUR = 21;
-  var VISIBLE_SLOTS = 12; // 30분 × 12 = 6시간
+  var VISIBLE_HOURS = 6;
 
-  // 현재 시각 기준 시작 슬롯 계산 (30분 단위로 내림)
-  var nowSlot = currentHour * 2 + Math.floor(currentMin / 30);
-  var openSlot = OPEN_HOUR * 2;
-  var closeSlot = CLOSE_HOUR * 2;
-  var startSlot = Math.max(openSlot, Math.min(nowSlot, closeSlot - VISIBLE_SLOTS));
-  var endSlot = Math.min(closeSlot, startSlot + VISIBLE_SLOTS);
+  // 시작 시각 계산 (1시간 기준, 기존과 동일)
+  var startHour = Math.max(OPEN_HOUR, Math.min(currentHour, CLOSE_HOUR - VISIBLE_HOURS));
+  var endHour = Math.min(CLOSE_HOUR, startHour + VISIBLE_HOURS);
+  var TOTAL_SLOTS = VISIBLE_HOURS * 2; // 12 서브슬롯 (30분 단위)
+  var startMin = startHour * 60;
+  var endMin = endHour * 60;
 
-  // 30분 슬롯별 예약 매핑
-  var slotMap = {};
+  // 현재 시각의 서브슬롯 인덱스
+  var nowSlotIdx = -1;
+  if (currentHour >= startHour && currentHour < endHour) {
+    nowSlotIdx = (currentHour - startHour) * 2 + Math.floor(currentMin / 30);
+  }
+
+  // 예약을 그리드 블록으로 변환
+  var blocks = [];
+  var occupied = new Array(TOTAL_SLOTS).fill(false);
+
   reservations.forEach(function(r) {
     var sParts = r['시작시간'].split(':');
     var eParts = r['종료시간'].split(':');
     var sMin = parseInt(sParts[0]) * 60 + parseInt(sParts[1]);
     var eMin = parseInt(eParts[0]) * 60 + parseInt(eParts[1]);
 
-    for (var m = sMin; m < eMin; m += 30) {
-      var slotH = Math.floor(m / 60);
-      var slotM = m % 60;
-      var slotKey = String(slotH).padStart(2, '0') + ':' + String(slotM).padStart(2, '0');
-      if (!slotMap[slotKey]) slotMap[slotKey] = [];
-      var already = slotMap[slotKey].some(function(x) {
-        return x.start === r['시작시간'] && x.team === r['팀명'];
-      });
-      if (!already) {
-        slotMap[slotKey].push({
-          team: r['팀명'],
-          user: r['예약자'],
-          start: r['시작시간'],
-          end: r['종료시간'],
-          isStart: (r['시작시간'] === slotKey),
-          isActive: (currentTime >= r['시작시간'] && currentTime < r['종료시간']),
-          isPast: (currentTime >= r['종료시간'])
-        });
-      }
+    // 표시 범위로 클램프
+    var visStart = Math.max(sMin, startMin);
+    var visEnd = Math.min(eMin, endMin);
+    if (visStart >= visEnd) return;
+
+    var slotStart = Math.floor((visStart - startMin) / 30);
+    var slotEnd = Math.ceil((visEnd - startMin) / 30);
+    var spanCount = slotEnd - slotStart;
+    if (spanCount <= 0) return;
+
+    blocks.push({
+      startIdx: slotStart,
+      spanCount: spanCount,
+      team: r['팀명'],
+      user: r['예약자'],
+      start: r['시작시간'],
+      end: r['종료시간'],
+      isActive: (currentTime >= r['시작시간'] && currentTime < r['종료시간']),
+      isPast: (currentTime >= r['종료시간'])
+    });
+
+    for (var i = slotStart; i < slotEnd; i++) {
+      occupied[i] = true;
     }
   });
 
-  // 30분 단위 행 렌더링
-  var html = '';
-  for (var s = startSlot; s < endSlot; s++) {
-    var h = Math.floor(s / 2);
-    var m = (s % 2) * 30;
-    var label = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
-    var isNowSlot = (s === nowSlot);
-    var rowCls = 'ds-row' + (isNowSlot ? ' now' : '');
-    var items = slotMap[label] || [];
+  // HTML 생성 (CSS Grid 기반)
+  var html = '<div class="ds-grid">';
 
-    html += '<div class="' + rowCls + '">';
-    html += '<div class="ds-time-label">' + label + '</div>';
-    html += '<div class="ds-slot">';
-
-    if (items.length > 0) {
-      var primary = items.find(function(x) { return x.isStart; }) || items[0];
-      var blockCls = 'ds-block';
-      if (primary.isActive) blockCls += ' active';
-      else if (primary.isPast) blockCls += ' past';
-
-      var statusTag = primary.isActive
-        ? ' <span style="color:var(--green);">● 진행 중</span>'
-        : '';
-
-      html +=
-        '<div class="' + blockCls + '">' +
-          '<div class="ds-block-team">' + primary.team + statusTag + '</div>' +
-          '<div class="ds-block-user">' + primary.user + ' · ' + primary.start + ' ~ ' + primary.end + '</div>' +
-        '</div>';
-    }
-
-    html += '</div></div>';
+  // 시간 레이블 (1시간 단위, 각 2행 span)
+  for (var h = startHour; h < endHour; h++) {
+    var gridRow = (h - startHour) * 2 + 1;
+    var isNowHour = (h === currentHour);
+    var isLast = (h === endHour - 1);
+    var cls = 'ds-time-label';
+    if (isNowHour) cls += ' now';
+    if (isLast) cls += ' last';
+    html += '<div class="' + cls + '" style="grid-row:' + gridRow + '/span 2">' +
+      String(h).padStart(2, '0') + ':00</div>';
   }
 
+  // 예약 블록 (column 2, 가변 span)
+  blocks.forEach(function(b) {
+    var gridRow = b.startIdx + 1;
+    var blockCls = 'ds-block';
+    if (b.isActive) blockCls += ' active';
+    else if (b.isPast) blockCls += ' past';
+
+    var statusTag = b.isActive
+      ? ' <span style="color:var(--green);">● 진행 중</span>'
+      : '';
+
+    html += '<div class="ds-slot" style="grid-row:' + gridRow + '/span ' + b.spanCount + ';grid-column:2">' +
+      '<div class="' + blockCls + '">' +
+        '<div class="ds-block-team">' + b.team + statusTag + '</div>' +
+        '<div class="ds-block-user">' + b.user + ' · ' + b.start + ' ~ ' + b.end + '</div>' +
+      '</div></div>';
+  });
+
+  // 빈 슬롯 (column 2)
+  for (var i = 0; i < TOTAL_SLOTS; i++) {
+    if (!occupied[i]) {
+      html += '<div class="ds-slot ds-empty" style="grid-row:' + (i + 1) + '/span 1;grid-column:2"></div>';
+    }
+  }
+
+  // 구분선 (시간 경계 = 실선, 30분 경계 = 점선)
+  for (var i = 1; i < TOTAL_SLOTS; i++) {
+    var isHourBoundary = (i % 2 === 0);
+    if (isHourBoundary) {
+      html += '<div class="ds-hline" style="grid-row:' + (i + 1) + ';grid-column:1/-1"></div>';
+    } else {
+      html += '<div class="ds-hline half" style="grid-row:' + (i + 1) + ';grid-column:2"></div>';
+    }
+  }
+
+  html += '</div>';
   container.innerHTML = html;
 }
 
