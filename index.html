@@ -2677,8 +2677,8 @@ function selectTime(time) {
     hint.textContent = '종료 시간을 선택하세요 (시작: ' + time + ')';
   } else if (!state.selectedEndTime) {
     // 두 번째 클릭: 종료 시간 선택
-    if (time <= state.selectedStartTime) {
-      // 시작시간보다 같거나 이전이면 리셋
+    if (time < state.selectedStartTime) {
+      // 시작시간보다 이전이면 해당 시간을 새 시작시간으로 설정
       state.selectedStartTime = time;
       state.selectedEndTime = null;
       hint.textContent = '종료 시간을 선택하세요 (시작: ' + time + ')';
@@ -2974,7 +2974,7 @@ async function verifyAndEdit(id) {
         state.selectedEndTime = reservation['종료시간'];
 
         document.getElementById('reserveTitle').textContent = '예약 수정';
-        document.getElementById('reserveSubtitle').textContent = 'J동 ' + reservation['층'] + ' 회의실';
+        document.getElementById('reserveSubtitle').textContent = 'J동 ' + reservation['층'] + '회의실';
         document.getElementById('inputTeam').value = reservation['팀명'];
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = pw;
@@ -4069,4 +4069,3 @@ window.addEventListener('appinstalled', function() {
 
 </body>
 </html>
-
