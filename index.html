@@ -1458,6 +1458,30 @@
       font-size: 24px;
     }
 
+    /* QR 코드 영역 */
+    .dp-qr-area {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--gray-light);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dp-qr-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      flex-shrink: 0;
+    }
+
+    .dp-qr-text {
+      font-size: 15px;
+      color: var(--gray-text);
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
     /* ── 우측/하단: 시간표 카드 ── */
     .display-panel-schedule {
       flex: 1;
@@ -1734,6 +1758,21 @@
       .display-refresh-indicator {
         display: none;
       }
+
+      .dp-qr-area {
+        margin-top: 28px;
+        padding-top: 20px;
+        gap: 18px;
+      }
+
+      .dp-qr-img {
+        width: 100px;
+        height: 100px;
+      }
+
+      .dp-qr-text {
+        font-size: 20px;
+      }
     }
 
     /* ═══════════════════════════════════════════════════
@@ -1747,9 +1786,14 @@
       }
 
       .display-panel-status {
-        flex-shrink: 0;
-        max-height: 40vh;
+        flex: 1;
+        min-height: 0;
+        max-height: none;
         padding: 24px 28px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
       }
 
       .display-panel-status.state-inuse {
@@ -1788,6 +1832,25 @@
 
       .display-panel-schedule {
         flex: 1;
+        min-height: 0;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
+      }
+
+      .dp-qr-area {
+        margin-top: 16px;
+        padding-top: 14px;
+        gap: 12px;
+      }
+
+      .dp-qr-img {
+        width: 64px;
+        height: 64px;
+      }
+
+      .dp-qr-text {
+        font-size: 14px;
       }
     }
   </style>
@@ -3295,6 +3358,16 @@ function renderDisplayStatus(reservations) {
       '<div class="dp-state-text available">사용 가능</div>' +
       '<div class="dp-next" style="margin-top:16px;">오늘 남은 예약이 없습니다</div>';
   }
+
+  // QR 코드 영역 추가 (예약 앱 바로가기)
+  var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '');
+  var qrSrc = 'https://chart.googleapis.com/chart?chs=200x200&cht=qr&choe=UTF-8&chl=' + encodeURIComponent(qrUrl);
+
+  html +=
+    '<div class="dp-qr-area">' +
+      '<img class="dp-qr-img" src="' + qrSrc + '" alt="예약 QR" />' +
+      '<div class="dp-qr-text">QR 스캔하여 예약하기</div>' +
+    '</div>';
 
   container.innerHTML = html;
 }
