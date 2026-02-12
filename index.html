@@ -2123,7 +2123,7 @@
         </div>
         <div class="input-group">
           <label for="newRoomName">회의실 이름</label>
-          <input type="text" id="newRoomName" placeholder="예: 미니 회의실, 대회의실" maxlength="30" autocomplete="off">
+          <input type="text" id="newRoomName" placeholder="예: 회의실, 대회의실" maxlength="30" autocomplete="off">
         </div>
         <button class="btn btn-primary" onclick="adminAddRoom()">회의실 추가</button>
       </div>
@@ -2298,20 +2298,20 @@ async function loadRoomsForHome() {
     } else {
       // 실패 시 기본 회의실 표시
       roomList = [
-        { '회의실ID': '6F', '층': '6F', '이름': '미니 회의실', '활성화': true },
-        { '회의실ID': '7F', '층': '7F', '이름': '미니 회의실', '활성화': true },
-        { '회의실ID': '8F', '층': '8F', '이름': '미니 회의실', '활성화': true },
-        { '회의실ID': '9F', '층': '9F', '이름': '미니 회의실', '활성화': true }
+        { '회의실ID': '6F', '층': '6F', '이름': '회의실', '활성화': true },
+        { '회의실ID': '7F', '층': '7F', '이름': '회의실', '활성화': true },
+        { '회의실ID': '8F', '층': '8F', '이름': '회의실', '활성화': true },
+        { '회의실ID': '9F', '층': '9F', '이름': '회의실', '활성화': true }
       ];
       renderFloorGrid();
     }
   } catch (e) {
     // 오프라인 시 기본값 사용
     roomList = [
-      { '회의실ID': '6F', '층': '6F', '이름': '미니 회의실', '활성화': true },
-      { '회의실ID': '7F', '층': '7F', '이름': '미니 회의실', '활성화': true },
-      { '회의실ID': '8F', '층': '8F', '이름': '미니 회의실', '활성화': true },
-      { '회의실ID': '9F', '층': '9F', '이름': '미니 회의실', '활성화': true }
+      { '회의실ID': '6F', '층': '6F', '이름': '회의실', '활성화': true },
+      { '회의실ID': '7F', '층': '7F', '이름': '회의실', '활성화': true },
+      { '회의실ID': '8F', '층': '8F', '이름': '회의실', '활성화': true },
+      { '회의실ID': '9F', '층': '9F', '이름': '회의실', '활성화': true }
     ];
     renderFloorGrid();
   }
@@ -2404,7 +2404,7 @@ function startReservation() {
   state.calendarMonth = new Date().getMonth();
 
   document.getElementById('reserveTitle').textContent = state.selectedFloor + ' 예약하기';
-  document.getElementById('reserveSubtitle').textContent = 'J동 ' + state.selectedFloor + ' 미니 회의실';
+  document.getElementById('reserveSubtitle').textContent = 'J동 ' + state.selectedFloor + ' 회의실';
 
   document.getElementById('timeSection').style.display = 'none';
   document.getElementById('formDivider').style.display = 'none';
@@ -2974,7 +2974,7 @@ async function verifyAndEdit(id) {
         state.selectedEndTime = reservation['종료시간'];
 
         document.getElementById('reserveTitle').textContent = '예약 수정';
-        document.getElementById('reserveSubtitle').textContent = 'J동 ' + reservation['층'] + ' 미니 회의실';
+        document.getElementById('reserveSubtitle').textContent = 'J동 ' + reservation['층'] + ' 회의실';
         document.getElementById('inputTeam').value = reservation['팀명'];
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = pw;
@@ -4069,3 +4069,4 @@ window.addEventListener('appinstalled', function() {
 
 </body>
 </html>
+
