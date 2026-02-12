@@ -1516,8 +1516,93 @@
       flex-shrink: 0;
     }
 
-    /* ── 가로형 (Landscape) ── */
+    /* ═══════════════════════════════════════════════════
+       가로 모드 공통 대응 (일반 화면 + 디스플레이)
+       ═══════════════════════════════════════════════════ */
     @media (orientation: landscape) {
+
+      /* ── 일반 화면: 가로 시 max-width 확장 + 여백 축소 ── */
+      .app {
+        max-width: 720px;
+      }
+
+      .screen {
+        padding-bottom: 80px;
+      }
+
+      .header {
+        padding: 10px 24px;
+      }
+
+      .header h1 {
+        font-size: 22px;
+      }
+
+      .section {
+        padding: 14px 24px;
+      }
+
+      .section-title {
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+
+      .floor-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .floor-card {
+        padding: 16px 12px;
+      }
+
+      .bottom-cta {
+        max-width: 720px;
+        padding: 10px 24px;
+        padding-bottom: calc(10px + var(--safe-bottom));
+      }
+
+      /* 달력/시간 그리드 컴팩트화 */
+      .calendar-container {
+        font-size: 13px;
+      }
+
+      .time-grid {
+        grid-template-columns: repeat(6, 1fr);
+      }
+
+      .time-slot {
+        padding: 8px 4px;
+        font-size: 12px;
+      }
+
+      /* 입력 폼 2열 배치 */
+      .input-group label {
+        font-size: 13px;
+      }
+
+      /* 예약 카드 */
+      .reservation-card {
+        padding: 16px;
+        margin-bottom: 8px;
+      }
+
+      /* 탭 바 */
+      .tab-bar {
+        padding: 0 24px;
+      }
+
+      /* 관리자 화면 */
+      .admin-rooms-list .room-card {
+        padding: 14px;
+      }
+
+      /* 모달 */
+      .modal {
+        max-height: 85vh;
+        overflow-y: auto;
+      }
+
+      /* ── 디스플레이: 가로 시 좌우 분할 ── */
       .display-body {
         flex-direction: row;
       }
@@ -1551,10 +1636,14 @@
       }
     }
 
-    /* ── 세로형 (Portrait) ── */
+    /* ═══════════════════════════════════════════════════
+       세로 모드 (Portrait)
+       ═══════════════════════════════════════════════════ */
     @media (orientation: portrait) {
       .display-panel-status {
         flex-shrink: 0;
+        max-height: 45vh;
+        overflow-y: auto;
       }
 
       .display-panel-schedule {

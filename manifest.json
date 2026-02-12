@@ -6,7 +6,7 @@
   "display": "fullscreen",
   "background_color": "#ffffff",
   "theme_color": "#006241",
-  "orientation": "portrait",
+  "orientation": "any",
   "scope": "./",
   "lang": "ko",
   "categories": ["productivity", "business"],
