@@ -375,6 +375,10 @@
       color: var(--green);
     }
 
+    .time-slot.time-slot-hidden {
+      display: none;
+    }
+
     /* ─── Form Input ───────────────────────────────── */
     .input-group {
       margin-bottom: 16px;
@@ -1396,14 +1400,14 @@
     }
 
     .dp-time-range {
-      font-size: 16px;
+      font-size: 20px;
       color: var(--gray-text);
-      margin-bottom: 10px;
+      margin-bottom: 12px;
       letter-spacing: 0.5px;
     }
 
     .dp-state-text {
-      font-size: 40px;
+      font-size: 52px;
       font-weight: 800;
       color: var(--dark);
       line-height: 1.15;
@@ -1418,56 +1422,58 @@
     }
 
     .dp-meeting-info {
-      margin-top: 16px;
+      margin-top: 20px;
     }
 
     .dp-meeting-team {
-      font-size: 22px;
+      font-size: 30px;
       font-weight: 700;
       color: var(--dark);
     }
 
     .dp-meeting-user {
-      font-size: 16px;
+      font-size: 22px;
       color: var(--gray-text);
-      margin-top: 4px;
+      margin-top: 6px;
     }
 
     .dp-meeting-time {
-      font-size: 16px;
+      font-size: 22px;
       color: var(--green);
       font-weight: 600;
-      margin-top: 8px;
+      margin-top: 10px;
     }
 
     .dp-next {
-      margin-top: 24px;
-      padding-top: 18px;
+      margin-top: 28px;
+      padding-top: 20px;
       border-top: 1px solid var(--gray-light);
-      font-size: 16px;
+      font-size: 22px;
       color: var(--gray-text);
       line-height: 1.6;
     }
 
     .dp-next strong {
       color: var(--dark);
-      font-size: 17px;
+      font-size: 24px;
     }
 
     /* ── 우측/하단: 시간표 카드 ── */
     .display-panel-schedule {
       flex: 1;
-      overflow-y: auto;
+      overflow: hidden;
       padding: 0;
       background: var(--white);
       border-radius: var(--radius-md);
       box-shadow: var(--shadow-md);
+      display: flex;
+      flex-direction: column;
     }
 
     .ds-row {
+      flex: 1;
       display: flex;
-      align-items: stretch;
-      min-height: 56px;
+      align-items: center;
       border-bottom: 1px solid #f0f0f0;
     }
 
@@ -1481,11 +1487,11 @@
     }
 
     .ds-time-label {
-      width: 72px;
-      min-width: 72px;
+      width: 80px;
+      min-width: 80px;
       padding: 10px 14px 10px 18px;
-      font-size: 15px;
-      font-weight: 600;
+      font-size: 18px;
+      font-weight: 700;
       color: var(--gray-text);
       font-variant-numeric: tabular-nums;
       text-align: right;
@@ -1494,17 +1500,17 @@
 
     .ds-slot {
       flex: 1;
-      padding: 8px 14px;
+      padding: 8px 16px;
       display: flex;
       align-items: center;
     }
 
     .ds-block {
       width: 100%;
-      padding: 10px 16px;
-      border-radius: 10px;
+      padding: 10px 18px;
+      border-radius: 12px;
       background: var(--gray-bg);
-      border-left: 4px solid var(--gray-mid);
+      border-left: 5px solid var(--gray-mid);
     }
 
     .ds-block.active {
@@ -1517,20 +1523,20 @@
     }
 
     .ds-block-team {
-      font-size: 15px;
+      font-size: 17px;
       font-weight: 700;
       color: var(--dark);
     }
 
     .ds-block-user {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--gray-text);
       margin-top: 2px;
     }
 
     .ds-row.now .ds-time-label {
       color: var(--green);
-      font-weight: 700;
+      font-weight: 800;
     }
 
     .display-refresh-indicator {
@@ -1657,73 +1663,72 @@
       }
 
       .dp-time-range {
-        font-size: 20px;
-        margin-bottom: 14px;
+        font-size: 28px;
+        margin-bottom: 16px;
       }
 
       .dp-state-text {
-        font-size: 56px;
+        font-size: 80px;
       }
 
       .dp-meeting-info {
-        margin-top: 20px;
+        margin-top: 24px;
       }
 
       .dp-meeting-team {
-        font-size: 28px;
+        font-size: 40px;
       }
 
       .dp-meeting-user {
-        font-size: 20px;
-        margin-top: 6px;
+        font-size: 28px;
+        margin-top: 8px;
       }
 
       .dp-meeting-time {
-        font-size: 20px;
-        margin-top: 10px;
+        font-size: 28px;
+        margin-top: 12px;
       }
 
       .dp-next {
-        font-size: 19px;
-        margin-top: 28px;
-        padding-top: 20px;
+        font-size: 26px;
+        margin-top: 32px;
+        padding-top: 24px;
       }
 
       .dp-next strong {
-        font-size: 20px;
+        font-size: 28px;
       }
 
       .display-panel-schedule {
         width: 40%;
         flex: none;
-        overflow-y: auto;
+        overflow: hidden;
+        display: flex;
+        flex-direction: column;
       }
 
       .ds-time-label {
-        width: 60px;
-        min-width: 60px;
-        padding: 8px 10px 8px 14px;
-        font-size: 14px;
+        width: 76px;
+        min-width: 76px;
+        font-size: 20px;
+        font-weight: 700;
+        padding: 10px 14px;
       }
 
       .ds-slot {
-        padding: 6px 10px;
-      }
-
-      .ds-row {
-        min-height: 52px;
+        padding: 8px 14px;
       }
 
       .ds-block {
-        padding: 8px 12px;
+        padding: 10px 16px;
       }
 
       .ds-block-team {
-        font-size: 14px;
+        font-size: 19px;
       }
 
       .ds-block-user {
-        font-size: 12px;
+        font-size: 15px;
       }
 
       .display-refresh-indicator {
@@ -1760,25 +1765,25 @@
       }
 
       .dp-state-text {
-        font-size: 36px;
+        font-size: 48px;
       }
 
       .dp-meeting-team {
-        font-size: 20px;
+        font-size: 28px;
       }
 
       .dp-meeting-user {
-        font-size: 15px;
+        font-size: 20px;
       }
 
       .dp-meeting-time {
-        font-size: 15px;
+        font-size: 20px;
       }
 
       .dp-next {
-        font-size: 14px;
-        margin-top: 16px;
-        padding-top: 12px;
+        font-size: 19px;
+        margin-top: 18px;
+        padding-top: 14px;
       }
 
       .display-panel-schedule {
@@ -2519,11 +2524,21 @@ function renderTimeGrid(reservedSlots) {
   const grid = document.getElementById('timeGrid');
   let html = '';
 
+  // 표시 범위: 07:00 ~ 21:00 (21:30~06:30은 숨김 처리, 데이터는 유지)
+  var SLOT_OPEN = '07:00';
+  var SLOT_CLOSE = '21:00';
+
   for (let h = 0; h < 24; h++) {
     for (let m = 0; m < 60; m += 30) {
       const time = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
       const displayTime = String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
       let classes = 'time-slot';
+
+      // 운영시간 외 슬롯은 숨김
+      var isHidden = (time >= SLOT_CLOSE || time < SLOT_OPEN);
+      if (isHidden) {
+        classes += ' time-slot-hidden';
+      }
 
       // 예약된 시간 확인
       const isReserved = reservedSlots.some(function(r) {
@@ -3291,23 +3306,26 @@ function renderDisplaySchedule(reservations) {
   var currentTime = String(currentHour).padStart(2, '0') + ':' +
     String(now.getMinutes()).padStart(2, '0');
 
-  // 1시간 단위 시간표: 현재 시각 -1시간 ~ 23시까지
-  var startHour = Math.max(0, currentHour - 1);
-  var endHour = 24;
+  // 운영시간: 07:00 ~ 21:00, 현재 기준 6시간 표시
+  var OPEN_HOUR = 7;
+  var CLOSE_HOUR = 21;
+  var VISIBLE_HOURS = 6;
+
+  // 시작 시각 계산: 현재 시각 기준, 운영시간 내 클램프
+  var startHour = Math.max(OPEN_HOUR, Math.min(currentHour, CLOSE_HOUR - VISIBLE_HOURS));
+  var endHour = Math.min(CLOSE_HOUR, startHour + VISIBLE_HOURS);
 
   // 시간대별 예약 수집 (1시간 블록 기준)
-  var hourMap = {}; // key: hour number → array of reservations in that hour
+  var hourMap = {};
   reservations.forEach(function(r) {
     var sParts = r['시작시간'].split(':');
     var eParts = r['종료시간'].split(':');
     var sMin = parseInt(sParts[0]) * 60 + parseInt(sParts[1]);
     var eMin = parseInt(eParts[0]) * 60 + parseInt(eParts[1]);
 
-    // 이 예약이 걸치는 모든 시간대에 등록
     for (var m = sMin; m < eMin; m += 60) {
       var h = Math.floor(m / 60);
       if (!hourMap[h]) hourMap[h] = [];
-      // 중복 등록 방지
       var already = hourMap[h].some(function(x) { return x.start === r['시작시간'] && x.team === r['팀명']; });
       if (!already) {
         hourMap[h].push({
@@ -3336,7 +3354,6 @@ function renderDisplaySchedule(reservations) {
     html += '<div class="ds-slot">';
 
     if (items.length > 0) {
-      // 시작 예약을 우선 표시, 없으면 계속 표시
       var primary = items.find(function(x) { return x.isStart; }) || items[0];
       var blockCls = 'ds-block';
       if (primary.isActive) blockCls += ' active';
@@ -3357,12 +3374,6 @@ function renderDisplaySchedule(reservations) {
   }
 
   container.innerHTML = html;
-
-  // 현재 시간대로 자동 스크롤
-  var nowRow = container.querySelector('.ds-row.now');
-  if (nowRow) {
-    nowRow.scrollIntoView({ behavior: 'smooth', block: 'center' });
-  }
 }
 
 // 화면 꺼짐 방지 (Wake Lock API)
