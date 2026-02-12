@@ -1254,6 +1254,43 @@ function formatDateKr(dateStr) {
   return parseInt(parts[1]) + '월 ' + parseInt(parts[2]) + '일';
 }
 
+// Google Sheets에서 Date 객체 또는 다양한 형식으로 반환될 수 있으므로 정규화
+function normalizeDate(val) {
+  if (!val) return '';
+  // 이미 YYYY-MM-DD 형식이면 그대로 반환
+  if (typeof val === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(val)) {
+    return val;
+  }
+  // ISO 문자열 (2026-02-12T00:00:00.000Z) 또는 Date 호환 문자열
+  try {
+    var d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return d.getFullYear() + '-' +
+        String(d.getMonth() + 1).padStart(2, '0') + '-' +
+        String(d.getDate()).padStart(2, '0');
+    }
+  } catch (e) {}
+  return String(val);
+}
+
+function normalizeTime(val) {
+  if (!val) return '';
+  // 이미 HH:MM 형식이면 그대로 반환
+  if (typeof val === 'string' && /^\d{2}:\d{2}$/.test(val)) {
+    return val;
+  }
+  // Date 객체 또는 ISO 문자열에서 시간 추출
+  try {
+    // "Sat Dec 30 1899 09:00:00 GMT+0900" 같은 Google Sheets 시간 형식
+    var d = new Date(val);
+    if (!isNaN(d.getTime())) {
+      return String(d.getHours()).padStart(2, '0') + ':' +
+        String(d.getMinutes()).padStart(2, '0');
+    }
+  } catch (e) {}
+  return String(val);
+}
+
 // ═══════════════════════════════════════════════════════
 // 날짜 선택
 // ═══════════════════════════════════════════════════════
@@ -1285,7 +1322,11 @@ async function loadTimeSlots() {
       floor: state.selectedFloor
     });
     if (res.success) {
-      reservedSlots = res.data || [];
+      reservedSlots = (res.data || []).map(function(r) {
+        r['시작시간'] = normalizeTime(r['시작시간']);
+        r['종료시간'] = normalizeTime(r['종료시간']);
+        return r;
+      });
     }
   } catch (e) {
     // 오프라인 모드: 예약 현황 없이 표시
@@ -1491,50 +1532,33 @@ function showCompleteScreen(data) {
 // 예약 내역 조회
 // ═══════════════════════════════════════════════════════
 async function loadReservations() {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1493',message:'loadReservations started',data:{},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-  // #endregion
-
   const list = document.getElementById('reservationsList');
   list.innerHTML = '<div style="text-align:center; padding:40px 0;"><div class="spinner" style="margin:0 auto;"></div></div>';
 
   try {
     const res = await apiGet('getReservations', {});
 
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1500',message:'API response received',data:{success:res.success,dataLength:res.data?res.data.length:0,rawResponse:res},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
-
     if (res.success) {
-      state.reservations = (res.data || []).sort(function(a, b) {
+      // 날짜/시간 데이터 정규화 (Google Sheets가 Date 객체로 반환할 수 있음)
+      state.reservations = (res.data || []).map(function(r) {
+        r['날짜'] = normalizeDate(r['날짜']);
+        r['시작시간'] = normalizeTime(r['시작시간']);
+        r['종료시간'] = normalizeTime(r['종료시간']);
+        return r;
+      }).sort(function(a, b) {
         if (a['날짜'] !== b['날짜']) return a['날짜'] > b['날짜'] ? 1 : -1;
         return a['시작시간'] > b['시작시간'] ? 1 : -1;
       });
-
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1505',message:'State updated, calling renderReservations',data:{reservationsCount:state.reservations.length,firstReservation:state.reservations[0]||null},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
-
       renderReservations();
     } else {
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1507',message:'API returned failure',data:{error:res.error||'unknown'},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       list.innerHTML = '<div class="empty-state"><p>데이터를 불러올 수 없습니다.</p></div>';
     }
   } catch (e) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1510',message:'API call threw exception',data:{error:e.message,stack:e.stack},timestamp:Date.now(),hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     list.innerHTML = '<div class="empty-state"><p>서버에 연결할 수 없습니다.</p></div>';
   }
 }
 
 function renderReservations() {
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1514',message:'renderReservations started',data:{totalReservations:state.reservations.length,currentTab:state.currentTab},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-
   const list = document.getElementById('reservationsList');
   let filtered = state.reservations;
 
@@ -1544,24 +1568,13 @@ function renderReservations() {
     });
   }
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1522',message:'After tab filtering',data:{filteredCount:filtered.length,sampleReservation:filtered[0]||null},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-
   // 오늘 이후만 표시
   const today = formatDate(new Date());
   filtered = filtered.filter(function(r) {
     return r['날짜'] >= today;
   });
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1528',message:'After date filtering',data:{today:today,finalFilteredCount:filtered.length,sampleDates:filtered.slice(0,3).map(r=>r['날짜'])},timestamp:Date.now(),hypothesisId:'B'})}).catch(()=>{});
-  // #endregion
-
   if (filtered.length === 0) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1530',message:'No reservations to display - showing empty state',data:{},timestamp:Date.now(),hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     list.innerHTML =
       '<div class="empty-state">' +
         '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>' +
@@ -1838,23 +1851,8 @@ async function apiGet(action, params) {
     }
   });
 
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1841',message:'Making API GET request',data:{url:url,action:action,params:params},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
-
   const response = await fetch(url, { redirect: 'follow' });
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1842',message:'API response received',data:{status:response.status,statusText:response.statusText,ok:response.ok},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
-
-  const jsonData = await response.json();
-
-  // #region agent log
-  fetch('http://127.0.0.1:7242/ingest/037004b2-890c-4972-b6de-b6a64f58fdea',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'index.html:1843',message:'JSON parsed',data:{jsonData:jsonData},timestamp:Date.now(),hypothesisId:'E'})}).catch(()=>{});
-  // #endregion
-
-  return jsonData;
+  return await response.json();
 }
 
 async function apiPost(body) {
