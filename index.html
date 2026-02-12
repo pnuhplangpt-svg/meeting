@@ -1302,6 +1302,55 @@
       letter-spacing: 1px;
     }
 
+    .dh-fullscreen-btn {
+      background: rgba(255,255,255,0.15);
+      border: none;
+      color: var(--white);
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s;
+      flex-shrink: 0;
+    }
+
+    .dh-fullscreen-btn:active {
+      background: rgba(255,255,255,0.3);
+    }
+
+    /* 전체화면 진입 안내 오버레이 */
+    .display-fs-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      color: #fff;
+      cursor: pointer;
+      gap: 16px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .display-fs-overlay svg {
+      opacity: 0.8;
+    }
+
+    .display-fs-overlay .fs-text {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .display-fs-overlay .fs-sub {
+      font-size: 13px;
+      opacity: 0.6;
+    }
+
     /* 메인 영역 (세로: 위아래 / 가로: 좌우) */
     .display-body {
       flex: 1;
@@ -1817,6 +1866,10 @@
       <div class="dh-right">
         <span class="dh-date" id="displayDate">--</span>
         <span class="dh-clock" id="displayClock">--:--</span>
+        <button class="dh-fullscreen-btn" id="btnFullscreen" onclick="toggleDisplayFullscreen()" title="전체화면">
+          <svg id="iconExpand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+          <svg id="iconShrink" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+        </button>
       </div>
     </div>
 
@@ -2826,6 +2879,12 @@ function initDisplayMode() {
   // 화면 꺼짐 방지
   requestWakeLock();
 
+  // 전체화면 진입 안내 오버레이 (비 fullscreen 상태일 때만)
+  showFullscreenOverlay();
+
+  // 전체화면 상태 변경 감지 → 아이콘 토글
+  document.addEventListener('fullscreenchange', updateFullscreenIcon);
+
   // 탭 비활성→활성 복귀 시 즉시 갱신 + Wake Lock 재요청
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden && displayFloor) {
@@ -3102,6 +3161,61 @@ async function requestWakeLock() {
   } catch (e) {
     // Wake Lock 실패 시 무시 (권한 거부 등)
   }
+}
+
+// 전체화면 토글
+function toggleDisplayFullscreen() {
+  if (!document.fullscreenElement) {
+    document.documentElement.requestFullscreen().catch(function() {});
+  } else {
+    document.exitFullscreen().catch(function() {});
+  }
+}
+
+// 전체화면 아이콘 업데이트
+function updateFullscreenIcon() {
+  var expand = document.getElementById('iconExpand');
+  var shrink = document.getElementById('iconShrink');
+  if (!expand || !shrink) return;
+
+  if (document.fullscreenElement) {
+    expand.style.display = 'none';
+    shrink.style.display = 'block';
+  } else {
+    expand.style.display = 'block';
+    shrink.style.display = 'none';
+  }
+}
+
+// 처음 진입 시 전체화면 안내 오버레이
+function showFullscreenOverlay() {
+  // 이미 전체화면이거나 standalone PWA이면 표시하지 않음
+  if (document.fullscreenElement) return;
+  if (window.matchMedia('(display-mode: fullscreen)').matches) return;
+  if (window.matchMedia('(display-mode: standalone)').matches) return;
+
+  var overlay = document.createElement('div');
+  overlay.className = 'display-fs-overlay';
+  overlay.innerHTML =
+    '<svg width="48" height="48" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>' +
+    '<div class="fs-text">화면을 터치하면 전체화면으로 전환됩니다</div>' +
+    '<div class="fs-sub">헤더의 버튼으로 언제든 전환할 수 있습니다</div>';
+
+  overlay.addEventListener('click', function() {
+    document.documentElement.requestFullscreen().catch(function() {});
+    overlay.remove();
+  });
+
+  // 5초 후 자동 사라짐 (터치 안 해도)
+  setTimeout(function() {
+    if (overlay.parentNode) {
+      overlay.style.opacity = '0';
+      overlay.style.transition = 'opacity 0.5s';
+      setTimeout(function() { overlay.remove(); }, 500);
+    }
+  }, 5000);
+
+  document.body.appendChild(overlay);
 }
 
 // ═══════════════════════════════════════════════════════
