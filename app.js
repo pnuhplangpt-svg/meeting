@@ -983,9 +983,9 @@ function showLoading(show) {
 // ═══════════════════════════════════════════════════════
 async function apiGet(action, params) {
   let url = API_URL + '?action=' + encodeURIComponent(action);
+
   Object.keys(params).forEach(function(key) {
       url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
-    }
   });
 
   const response = await fetch(url, { redirect: 'follow' });
@@ -999,6 +999,7 @@ async function apiGet(action, params) {
   } catch (e) {
     throw new Error('JSON parse error (' + action + ')');
   }
+
   return payload;
 }
 
