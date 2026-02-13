@@ -41,7 +41,6 @@ function getResponseToken(res) {
   if (res.data && typeof res.data.token === 'string' && res.data.token) return res.data.token;
   return '';
 }
-
 // ═══════════════════════════════════════════════════════
 // 초기화
 // ═══════════════════════════════════════════════════════
@@ -121,9 +120,6 @@ function renderFloorGrid() {
   var html = '';
   roomList.forEach(function(room) {
     html +=
-      '<div class="floor-card" data-floor="' + room['층'] + '" onclick="selectFloor(this)">' +
-        '<div class="floor-number">' + room['층'] + '</div>' +
-        '<div class="floor-label">' + room['이름'] + '</div>' +
       '</div>';
   });
   grid.innerHTML = html;
@@ -685,16 +681,6 @@ function renderReservations() {
       html +=
         '<div class="reservation-card fade-in">' +
           '<div class="card-header">' +
-            '<span class="card-floor">' + r['층'] + '</span>' +
-            '<span class="card-time">' + r['시작시간'] + ' ~ ' + r['종료시간'] + '</span>' +
-          '</div>' +
-          '<div class="card-info">' +
-            '<div class="card-row"><span class="label">팀명</span><span class="value">' + r['팀명'] + '</span></div>' +
-            '<div class="card-row"><span class="label">예약자</span><span class="value">' + r['예약자'] + '</span></div>' +
-          '</div>' +
-          '<div class="card-actions">' +
-            '<button class="btn btn-outline" style="flex:1" onclick="requestEdit(\'' + r['예약ID'] + '\')">수정</button>' +
-            '<button class="btn btn-outline-red" style="flex:1" onclick="requestDelete(\'' + r['예약ID'] + '\')">삭제</button>' +
           '</div>' +
         '</div>';
     });
@@ -972,17 +958,12 @@ async function apiGet(action, params) {
   });
 
   const response = await fetch(url, { redirect: 'follow' });
-  return await response.json();
-}
-
-async function apiPost(body) {
   const response = await fetch(API_URL, {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(body)
   });
-  return await response.json();
 }
 
 // ═══════════════════════════════════════════════════════
@@ -1077,12 +1058,6 @@ async function loadDisplayData() {
       date: today,
       floor: displayFloor
     });
-
-    // 층 이름을 서버에서 가져오기
-    try {
-      var roomRes = await apiGet('getRooms', {});
-      if (roomRes.success) {
-        var room = (roomRes.data || []).find(function(r) {
           return r['층'] === displayFloor;
         });
         if (room) {
@@ -1152,16 +1127,10 @@ function renderDisplayStatus(reservations) {
 
     html +=
       '<span class="dp-state-badge inuse">● 사용 중</span>' +
-      '<div class="dp-time-range">' + current['시작시간'] + ' ~ ' + current['종료시간'] + '</div>' +
-      '<div class="dp-state-text inuse">사용 중</div>' +
-      '<div class="dp-meeting-info">' +
-        '<div class="dp-meeting-team">' + current['팀명'] + '</div>' +
-        '<div class="dp-meeting-user">' + current['예약자'] + '</div>' +
       '</div>';
 
     if (next) {
       html += '<div class="dp-next">다음: <strong>' +
-        next['시작시간'] + '</strong> ' + next['팀명'] + '</div>';
     }
   } else if (next) {
     var nowMin = now.getHours() * 60 + now.getMinutes();
@@ -1175,9 +1144,6 @@ function renderDisplayStatus(reservations) {
         '<span class="dp-state-badge soon">● 곧 시작</span>' +
         '<div class="dp-state-text" style="color:#f5a623;">곧 시작</div>' +
         '<div class="dp-meeting-info">' +
-          '<div class="dp-meeting-team">' + next['팀명'] + '</div>' +
-          '<div class="dp-meeting-user">' + next['예약자'] + '</div>' +
-          '<div class="dp-meeting-time">' + next['시작시간'] + ' ~ ' + next['종료시간'] +
             ' (' + diffMin + '분 후)</div>' +
         '</div>';
     } else {
@@ -1194,8 +1160,6 @@ function renderDisplayStatus(reservations) {
         '<span class="dp-state-badge available">● 사용 가능</span>' +
         '<div class="dp-state-text available">사용 가능</div>' +
         '<div class="dp-next" style="margin-top:16px;">' +
-          '다음 예약: <strong>' + next['시작시간'] + ' ~ ' + next['종료시간'] + '</strong><br>' +
-          next['팀명'] + ' · ' + diffStr +
         '</div>';
     }
   } else {
@@ -1314,11 +1278,6 @@ function renderDisplaySchedule(reservations) {
         '<div class="ds-row-content">' +
           '<div class="' + cardClass + '">' +
             '<div class="ds-card-team">' +
-              r['팀명'] +
-              (isNow ? '<span class="ds-card-badge">진행 중</span>' : '') +
-            '</div>' +
-            '<div class="ds-card-detail">' +
-              r['예약자'] + ' · ' + formatMinutesToTime(startMin) + ' ~ ' + formatMinutesToTime(endMin) +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -1594,13 +1553,6 @@ function renderAdminList() {
       html +=
         '<div class="admin-reservation-card fade-in" style="' + (isPast ? 'opacity:0.6' : '') + '">' +
           '<div class="admin-card-top">' +
-            '<span class="card-floor">' + r['층'] + '</span>' +
-            '<button class="btn btn-outline-red" style="padding:6px 14px; font-size:12px; min-height:32px;" onclick="adminDeleteOne(\'' + r['예약ID'] + '\')">삭제</button>' +
-          '</div>' +
-          '<div class="admin-card-meta">' +
-            '<div class="meta-item"><span class="meta-label">시간</span><span class="meta-value">' + r['시작시간'] + '~' + r['종료시간'] + '</span></div>' +
-            '<div class="meta-item"><span class="meta-label">팀</span><span class="meta-value">' + r['팀명'] + '</span></div>' +
-            '<div class="meta-item"><span class="meta-label">예약자</span><span class="meta-value">' + r['예약자'] + '</span></div>' +
           '</div>' +
         '</div>';
     });
@@ -1742,19 +1694,12 @@ function renderAdminRooms() {
     var isActive = room['활성화'] === true;
     html +=
       '<div class="room-card' + (isActive ? '' : ' disabled') + ' fade-in">' +
-        '<div class="room-icon">' + room['층'] + '</div>' +
-        '<div class="room-info">' +
-          '<div class="room-name">' + room['이름'] + '</div>' +
           '<div class="room-status">' +
             '<span class="active-dot ' + (isActive ? 'on' : 'off') + '"></span>' +
             (isActive ? '활성 - 예약 가능' : '비활성 - 예약 불가') +
           '</div>' +
         '</div>' +
         '<div class="room-actions">' +
-          '<button class="room-toggle-btn ' + (isActive ? 'deactivate' : 'activate') + '" onclick="adminToggleRoom(\'' + room['회의실ID'] + '\', ' + !isActive + ')">' +
-            (isActive ? '비활성화' : '활성화') +
-          '</button>' +
-          '<button class="room-delete-btn" onclick="adminRemoveRoom(\'' + room['회의실ID'] + '\')">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
           '</button>' +
         '</div>' +
