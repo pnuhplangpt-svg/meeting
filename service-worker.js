@@ -3,7 +3,7 @@
  * 오프라인 캐싱 및 네트워크 전략 관리
  */
 
-const CACHE_NAME = 'jdong-reservation-v6';
+const CACHE_NAME = 'jdong-reservation-v7';
 const STATIC_ASSETS = [
   './',
   './index.html',
@@ -56,6 +56,35 @@ self.addEventListener('activate', function(event) {
   );
 });
 
+
+self.addEventListener('message', function(event) {
+  if (!event.data) return;
+  if (event.data.type === 'SKIP_WAITING') {
+    self.skipWaiting();
+  }
+});
+
+function cacheResponse(request, response) {
+  if (!response || response.status !== 200 || response.type === 'opaque') {
+    return Promise.resolve(response);
+  }
+  return caches.open(CACHE_NAME).then(function(cache) {
+    cache.put(request, response.clone());
+    return response;
+  });
+}
+
+function networkFirst(request) {
+  return fetch(request).then(function(response) {
+    return cacheResponse(request, response);
+  }).catch(function() {
+    return caches.match(request).then(function(cachedResponse) {
+      if (cachedResponse) return cachedResponse;
+      throw new Error('Network unavailable and cache miss');
+    });
+  });
+}
+
 // ─── 요청 가로채기 (네트워크 우선 전략) ──────────────────
 self.addEventListener('fetch', function(event) {
   if (event.request.method !== 'GET') return;
@@ -63,17 +92,10 @@ self.addEventListener('fetch', function(event) {
   const url = new URL(event.request.url);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-  // Google Apps Script API 요청은 항상 네트워크
+  // Google Apps Script API 요청은 SW가 절대 가로채지 않음
+  // (브라우저 기본 네트워크 스택으로 전달하여 CORS/리다이렉트 오류를 명확히 유지)
   if (url.hostname.includes('script.google.com') ||
       url.hostname.includes('script.googleusercontent.com')) {
-    event.respondWith(
-      fetch(event.request).catch(function() {
-        return new Response(
-          JSON.stringify({ success: false, error: '오프라인 상태입니다.' }),
-          { headers: { 'Content-Type': 'application/json' } }
-        );
-      })
-    );
     return;
   }
 
@@ -81,31 +103,6 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  // 정적 자산: 캐시 우선, 네트워크 폴백
-  event.respondWith(
-    caches.match(event.request).then(function(cachedResponse) {
-      if (cachedResponse) {
-        // 백그라운드에서 캐시 업데이트
-        fetch(event.request).then(function(networkResponse) {
-          if (networkResponse && networkResponse.status === 200) {
-            caches.open(CACHE_NAME).then(function(cache) {
-              cache.put(event.request, networkResponse.clone());
-            });
-          }
-        }).catch(function() {});
-
-        return cachedResponse;
-      }
-
-      return fetch(event.request).then(function(networkResponse) {
-        if (networkResponse && networkResponse.status === 200) {
-          const responseClone = networkResponse.clone();
-          caches.open(CACHE_NAME).then(function(cache) {
-            cache.put(event.request, responseClone);
-          });
-        }
-        return networkResponse;
-      });
-    })
-  );
+  // 정적 자산: 네트워크 우선(최신 코드 반영), 실패 시 캐시 폴백
+  event.respondWith(networkFirst(event.request));
 });

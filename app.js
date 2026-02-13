@@ -103,9 +103,7 @@ document.addEventListener('DOMContentLoaded', function() {
   if (initDisplayMode()) {
     // 디스플레이 모드: 일반 UI 초기화 건너뜀
     initNetworkBanner();
-    if ('serviceWorker' in navigator) {
-      navigator.serviceWorker.register('service-worker.js').catch(function() {});
-    }
+    registerServiceWorker();
     return;
   }
 
@@ -115,11 +113,41 @@ document.addEventListener('DOMContentLoaded', function() {
   initNetworkBanner();
   navigateTo('screenHome');
   initInstallBanner();
-
-  if ('serviceWorker' in navigator) {
-    navigator.serviceWorker.register('service-worker.js').catch(function() {});
-  }
+  registerServiceWorker();
 });
+
+
+function registerServiceWorker() {
+  if (!('serviceWorker' in navigator)) return;
+
+  var hasControllerChangeReloaded = false;
+  navigator.serviceWorker.addEventListener('controllerchange', function() {
+    if (hasControllerChangeReloaded) return;
+    hasControllerChangeReloaded = true;
+    window.location.reload();
+  });
+
+  navigator.serviceWorker.register('service-worker.js', { updateViaCache: 'none' }).then(function(registration) {
+    function handleInstallingWorker(worker) {
+      if (!worker) return;
+      worker.addEventListener('statechange', function() {
+        if (worker.state === 'installed' && navigator.serviceWorker.controller) {
+          worker.postMessage({ type: 'SKIP_WAITING' });
+        }
+      });
+    }
+
+    handleInstallingWorker(registration.installing);
+
+    registration.addEventListener('updatefound', function() {
+      handleInstallingWorker(registration.installing);
+    });
+
+    setInterval(function() {
+      registration.update().catch(function() {});
+    }, 60 * 1000);
+  }).catch(function() {});
+}
 
 function setTodayDate() {
   const now = new Date();
