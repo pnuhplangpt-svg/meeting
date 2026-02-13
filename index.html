@@ -1411,15 +1411,15 @@
     }
 
     .dp-state-badge.inuse {
-      color: var(--green);
-      background: var(--green-bg);
-      border-color: var(--green-light);
+      color: var(--red);
+      background: #fff5f5;
+      border-color: #ffd8d8;
     }
 
     .dp-state-badge.available {
-      color: var(--gray-text);
-      background: var(--gray-bg);
-      border-color: var(--gray-light);
+      color: var(--green);
+      background: var(--green-bg);
+      border-color: #cfeadf;
     }
 
     .dp-state-badge.soon {
@@ -1443,11 +1443,11 @@
     }
 
     .dp-state-text.inuse {
-      color: var(--green);
+      color: var(--red);
     }
 
     .dp-state-text.available {
-      color: var(--gray-text);
+      color: var(--green);
     }
 
     .dp-meeting-info {
@@ -2368,9 +2368,9 @@ function renderFloorGrid() {
   var html = '';
   roomList.forEach(function(room) {
     html +=
-      '<div class="floor-card" data-floor="' + room['층'] + '" onclick="selectFloor(this)">' +
-        '<div class="floor-number">' + room['층'] + '</div>' +
-        '<div class="floor-label">' + room['이름'] + '</div>' +
+      '<div class="floor-card" data-floor="' + escapeHtml(room['층']) + '" onclick="selectFloor(this)">' +
+        '<div class="floor-number">' + escapeHtml(room['층']) + '</div>' +
+        '<div class="floor-label">' + escapeHtml(room['이름']) + '</div>' +
       '</div>';
   });
   grid.innerHTML = html;
@@ -2589,6 +2589,22 @@ function normalizeTime(val) {
   return String(val);
 }
 
+
+function escapeHtml(value) {
+  return String(value == null ? '' : value)
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
+
+function escapeJsSingleQuote(value) {
+  return String(value == null ? '' : value)
+    .replace(/\\/g, '\\\\')
+    .replace(/'/g, "\\'");
+}
+
 // ═══════════════════════════════════════════════════════
 // 날짜 선택
 // ═══════════════════════════════════════════════════════
@@ -2774,9 +2790,9 @@ function showFormSection() {
   // 선택 요약 표시
   const summary = document.getElementById('selectionSummary');
   summary.innerHTML =
-    '<div class="sel-item"><span class="sel-label">층</span><span class="sel-value">' + state.selectedFloor + '</span></div>' +
-    '<div class="sel-item"><span class="sel-label">날짜</span><span class="sel-value">' + formatDateKr(state.selectedDate) + '</span></div>' +
-    '<div class="sel-item"><span class="sel-label">시간</span><span class="sel-value">' + state.selectedStartTime + ' ~ ' + state.selectedEndTime + '</span></div>';
+    '<div class="sel-item"><span class="sel-label">층</span><span class="sel-value">' + escapeHtml(state.selectedFloor) + '</span></div>' +
+    '<div class="sel-item"><span class="sel-label">날짜</span><span class="sel-value">' + escapeHtml(formatDateKr(state.selectedDate)) + '</span></div>' +
+    '<div class="sel-item"><span class="sel-label">시간</span><span class="sel-value">' + escapeHtml(state.selectedStartTime) + ' ~ ' + escapeHtml(state.selectedEndTime) + '</span></div>';
 
   setTimeout(function() {
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -2846,13 +2862,13 @@ function showCompleteScreen(data) {
   const card = document.getElementById('completeCard');
   card.innerHTML =
     '<div class="card-header">' +
-      '<span class="card-floor">' + data['층'] + '</span>' +
-      '<span class="card-time">' + data['시작시간'] + ' ~ ' + data['종료시간'] + '</span>' +
+      '<span class="card-floor">' + escapeHtml(data['층']) + '</span>' +
+      '<span class="card-time">' + escapeHtml(data['시작시간']) + ' ~ ' + escapeHtml(data['종료시간']) + '</span>' +
     '</div>' +
     '<div class="card-info">' +
-      '<div class="card-row"><span class="label">날짜</span><span class="value">' + formatDateKr(data['날짜']) + '</span></div>' +
-      '<div class="card-row"><span class="label">팀명</span><span class="value">' + data['팀명'] + '</span></div>' +
-      '<div class="card-row"><span class="label">예약자</span><span class="value">' + data['예약자'] + '</span></div>' +
+      '<div class="card-row"><span class="label">날짜</span><span class="value">' + escapeHtml(formatDateKr(data['날짜'])) + '</span></div>' +
+      '<div class="card-row"><span class="label">팀명</span><span class="value">' + escapeHtml(data['팀명']) + '</span></div>' +
+      '<div class="card-row"><span class="label">예약자</span><span class="value">' + escapeHtml(data['예약자']) + '</span></div>' +
     '</div>';
 
   showScreen('screenComplete');
@@ -2931,16 +2947,16 @@ function renderReservations() {
       html +=
         '<div class="reservation-card fade-in">' +
           '<div class="card-header">' +
-            '<span class="card-floor">' + r['층'] + '</span>' +
-            '<span class="card-time">' + r['시작시간'] + ' ~ ' + r['종료시간'] + '</span>' +
+            '<span class="card-floor">' + escapeHtml(r['층']) + '</span>' +
+            '<span class="card-time">' + escapeHtml(r['시작시간']) + ' ~ ' + escapeHtml(r['종료시간']) + '</span>' +
           '</div>' +
           '<div class="card-info">' +
-            '<div class="card-row"><span class="label">팀명</span><span class="value">' + r['팀명'] + '</span></div>' +
-            '<div class="card-row"><span class="label">예약자</span><span class="value">' + r['예약자'] + '</span></div>' +
+            '<div class="card-row"><span class="label">팀명</span><span class="value">' + escapeHtml(r['팀명']) + '</span></div>' +
+            '<div class="card-row"><span class="label">예약자</span><span class="value">' + escapeHtml(r['예약자']) + '</span></div>' +
           '</div>' +
           '<div class="card-actions">' +
-            '<button class="btn btn-outline" style="flex:1" onclick="requestEdit(\'' + r['예약ID'] + '\')">수정</button>' +
-            '<button class="btn btn-outline-red" style="flex:1" onclick="requestDelete(\'' + r['예약ID'] + '\')">삭제</button>' +
+            '<button class="btn btn-outline" style="flex:1" onclick="requestEdit(\'' + escapeJsSingleQuote(r['예약ID']) + '\')">수정</button>' +
+            '<button class="btn btn-outline-red" style="flex:1" onclick="requestDelete(\'' + escapeJsSingleQuote(r['예약ID']) + '\')">삭제</button>' +
           '</div>' +
         '</div>';
     });
@@ -3173,6 +3189,51 @@ function showLoading(show) {
 // ═══════════════════════════════════════════════════════
 // API 통신
 // ═══════════════════════════════════════════════════════
+const API_TIMEOUT_MS = 8000;
+
+async function fetchWithTimeout(url, options, timeoutMs) {
+  var controller = new AbortController();
+  var timer = setTimeout(function() {
+    controller.abort();
+  }, timeoutMs || API_TIMEOUT_MS);
+
+  try {
+    var requestOptions = Object.assign({}, options || {}, { signal: controller.signal });
+    return await fetch(url, requestOptions);
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+async function fetchJsonWithRetry(url, options, retryCount) {
+  var attempts = (retryCount || 0) + 1;
+  var lastError = null;
+
+  for (var i = 0; i < attempts; i++) {
+    try {
+      var response = await fetchWithTimeout(url, options, API_TIMEOUT_MS);
+
+      if (!response.ok) {
+        throw new Error('HTTP ' + response.status);
+      }
+
+      try {
+        return await response.json();
+      } catch (e) {
+        throw new Error('응답 파싱 실패');
+      }
+    } catch (e) {
+      lastError = e;
+      var isAbort = e && (e.name === 'AbortError');
+      if (i === attempts - 1 || (!isAbort && String(e.message || '').indexOf('Failed to fetch') === -1)) {
+        throw lastError;
+      }
+    }
+  }
+
+  throw lastError || new Error('요청 실패');
+}
+
 async function apiGet(action, params) {
   let url = API_URL + '?action=' + encodeURIComponent(action);
   Object.keys(params).forEach(function(key) {
@@ -3181,18 +3242,16 @@ async function apiGet(action, params) {
     }
   });
 
-  const response = await fetch(url, { redirect: 'follow' });
-  return await response.json();
+  return await fetchJsonWithRetry(url, { redirect: 'follow' }, 1);
 }
 
 async function apiPost(body) {
-  const response = await fetch(API_URL, {
+  return await fetchJsonWithRetry(API_URL, {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain' },
     body: JSON.stringify(body)
-  });
-  return await response.json();
+  }, 0);
 }
 
 // ═══════════════════════════════════════════════════════
@@ -3202,6 +3261,9 @@ var displayFloor = null;
 var displayTimer = null;
 var displayClockTimer = null;
 var displayWakeLock = null;
+var displayRoomNameCache = null;
+var displayRoomNameCachedAt = 0;
+var DISPLAY_ROOM_CACHE_TTL = 10 * 60 * 1000; // 10분
 var DISPLAY_REFRESH_INTERVAL = 60000; // 60초마다 서버 데이터 갱신
 
 function initDisplayMode() {
@@ -3210,6 +3272,8 @@ function initDisplayMode() {
   if (!floor) return false;
 
   displayFloor = floor;
+  displayRoomNameCache = null;
+  displayRoomNameCachedAt = 0;
 
   // 모든 일반 화면 숨기기
   document.querySelectorAll('.screen').forEach(function(s) {
@@ -3288,17 +3352,29 @@ async function loadDisplayData() {
       floor: displayFloor
     });
 
-    // 층 이름을 서버에서 가져오기
+    // 층 이름 캐시: 매 갱신마다 getRooms 호출하지 않도록 TTL 적용
     try {
-      var roomRes = await apiGet('getRooms', {});
-      if (roomRes.success) {
-        var room = (roomRes.data || []).find(function(r) {
-          return r['층'] === displayFloor;
-        });
-        if (room) {
-          document.getElementById('displayFloorName').textContent =
-            room['층'] + ' ' + room['이름'];
+      var nowTs = Date.now();
+      var shouldRefreshRoomName = !displayRoomNameCache ||
+        (nowTs - displayRoomNameCachedAt) > DISPLAY_ROOM_CACHE_TTL;
+
+      if (shouldRefreshRoomName) {
+        var roomRes = await apiGet('getRooms', {});
+        if (roomRes.success) {
+          var room = (roomRes.data || []).find(function(r) {
+            return r['층'] === displayFloor;
+          });
+          if (room) {
+            displayRoomNameCache = room['층'] + ' ' + room['이름'];
+            displayRoomNameCachedAt = nowTs;
+          }
         }
+      }
+
+      if (displayRoomNameCache) {
+        document.getElementById('displayFloorName').textContent = displayRoomNameCache;
+      } else {
+        document.getElementById('displayFloorName').textContent = displayFloor;
       }
     } catch (e) {}
 
@@ -3362,16 +3438,16 @@ function renderDisplayStatus(reservations) {
 
     html +=
       '<span class="dp-state-badge inuse">● 사용 중</span>' +
-      '<div class="dp-time-range">' + current['시작시간'] + ' ~ ' + current['종료시간'] + '</div>' +
+      '<div class="dp-time-range">' + escapeHtml(current['시작시간']) + ' ~ ' + escapeHtml(current['종료시간']) + '</div>' +
       '<div class="dp-state-text inuse">사용 중</div>' +
       '<div class="dp-meeting-info">' +
-        '<div class="dp-meeting-team">' + current['팀명'] + '</div>' +
-        '<div class="dp-meeting-user">' + current['예약자'] + '</div>' +
+        '<div class="dp-meeting-team">' + escapeHtml(current['팀명']) + '</div>' +
+        '<div class="dp-meeting-user">' + escapeHtml(current['예약자']) + '</div>' +
       '</div>';
 
     if (next) {
       html += '<div class="dp-next">다음: <strong>' +
-        next['시작시간'] + '</strong> ' + next['팀명'] + '</div>';
+        escapeHtml(next['시작시간']) + '</strong> ' + escapeHtml(next['팀명']) + '</div>';
     }
   } else if (next) {
     var nowMin = now.getHours() * 60 + now.getMinutes();
@@ -3385,9 +3461,9 @@ function renderDisplayStatus(reservations) {
         '<span class="dp-state-badge soon">● 곧 시작</span>' +
         '<div class="dp-state-text" style="color:#f5a623;">곧 시작</div>' +
         '<div class="dp-meeting-info">' +
-          '<div class="dp-meeting-team">' + next['팀명'] + '</div>' +
-          '<div class="dp-meeting-user">' + next['예약자'] + '</div>' +
-          '<div class="dp-meeting-time">' + next['시작시간'] + ' ~ ' + next['종료시간'] +
+          '<div class="dp-meeting-team">' + escapeHtml(next['팀명']) + '</div>' +
+          '<div class="dp-meeting-user">' + escapeHtml(next['예약자']) + '</div>' +
+          '<div class="dp-meeting-time">' + escapeHtml(next['시작시간']) + ' ~ ' + escapeHtml(next['종료시간']) +
             ' (' + diffMin + '분 후)</div>' +
         '</div>';
     } else {
@@ -3404,8 +3480,8 @@ function renderDisplayStatus(reservations) {
         '<span class="dp-state-badge available">● 사용 가능</span>' +
         '<div class="dp-state-text available">사용 가능</div>' +
         '<div class="dp-next" style="margin-top:16px;">' +
-          '다음 예약: <strong>' + next['시작시간'] + ' ~ ' + next['종료시간'] + '</strong><br>' +
-          next['팀명'] + ' · ' + diffStr +
+          '다음 예약: <strong>' + escapeHtml(next['시작시간']) + ' ~ ' + escapeHtml(next['종료시간']) + '</strong><br>' +
+          escapeHtml(next['팀명']) + ' · ' + diffStr +
         '</div>';
     }
   } else {
@@ -3524,11 +3600,11 @@ function renderDisplaySchedule(reservations) {
         '<div class="ds-row-content">' +
           '<div class="' + cardClass + '">' +
             '<div class="ds-card-team">' +
-              r['팀명'] +
+              escapeHtml(r['팀명']) +
               (isNow ? '<span class="ds-card-badge">진행 중</span>' : '') +
             '</div>' +
             '<div class="ds-card-detail">' +
-              r['예약자'] + ' · ' + formatMinutesToTime(startMin) + ' ~ ' + formatMinutesToTime(endMin) +
+              escapeHtml(r['예약자']) + ' · ' + formatMinutesToTime(startMin) + ' ~ ' + formatMinutesToTime(endMin) +
             '</div>' +
           '</div>' +
         '</div>' +
@@ -3729,7 +3805,7 @@ async function adminRefresh() {
       renderAdminStats();
       renderAdminList();
     } else {
-      list.innerHTML = '<div class="empty-state"><p>' + (res.error || '데이터를 불러올 수 없습니다.') + '</p></div>';
+      list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(res.error || '데이터를 불러올 수 없습니다.') + '</p></div>';
     }
   } catch (e) {
     showLoading(false);
@@ -3808,13 +3884,13 @@ function renderAdminList() {
       html +=
         '<div class="admin-reservation-card fade-in" style="' + (isPast ? 'opacity:0.6' : '') + '">' +
           '<div class="admin-card-top">' +
-            '<span class="card-floor">' + r['층'] + '</span>' +
-            '<button class="btn btn-outline-red" style="padding:6px 14px; font-size:12px; min-height:32px;" onclick="adminDeleteOne(\'' + r['예약ID'] + '\')">삭제</button>' +
+            '<span class="card-floor">' + escapeHtml(r['층']) + '</span>' +
+            '<button class="btn btn-outline-red" style="padding:6px 14px; font-size:12px; min-height:32px;" onclick="adminDeleteOne(\'' + escapeJsSingleQuote(r['예약ID']) + '\')">삭제</button>' +
           '</div>' +
           '<div class="admin-card-meta">' +
-            '<div class="meta-item"><span class="meta-label">시간</span><span class="meta-value">' + r['시작시간'] + '~' + r['종료시간'] + '</span></div>' +
-            '<div class="meta-item"><span class="meta-label">팀</span><span class="meta-value">' + r['팀명'] + '</span></div>' +
-            '<div class="meta-item"><span class="meta-label">예약자</span><span class="meta-value">' + r['예약자'] + '</span></div>' +
+            '<div class="meta-item"><span class="meta-label">시간</span><span class="meta-value">' + escapeHtml(r['시작시간']) + '~' + escapeHtml(r['종료시간']) + '</span></div>' +
+            '<div class="meta-item"><span class="meta-label">팀</span><span class="meta-value">' + escapeHtml(r['팀명']) + '</span></div>' +
+            '<div class="meta-item"><span class="meta-label">예약자</span><span class="meta-value">' + escapeHtml(r['예약자']) + '</span></div>' +
           '</div>' +
         '</div>';
     });
@@ -3956,19 +4032,19 @@ function renderAdminRooms() {
     var isActive = room['활성화'] === true;
     html +=
       '<div class="room-card' + (isActive ? '' : ' disabled') + ' fade-in">' +
-        '<div class="room-icon">' + room['층'] + '</div>' +
+        '<div class="room-icon">' + escapeHtml(room['층']) + '</div>' +
         '<div class="room-info">' +
-          '<div class="room-name">' + room['이름'] + '</div>' +
+          '<div class="room-name">' + escapeHtml(room['이름']) + '</div>' +
           '<div class="room-status">' +
             '<span class="active-dot ' + (isActive ? 'on' : 'off') + '"></span>' +
             (isActive ? '활성 - 예약 가능' : '비활성 - 예약 불가') +
           '</div>' +
         '</div>' +
         '<div class="room-actions">' +
-          '<button class="room-toggle-btn ' + (isActive ? 'deactivate' : 'activate') + '" onclick="adminToggleRoom(\'' + room['회의실ID'] + '\', ' + !isActive + ')">' +
+          '<button class="room-toggle-btn ' + (isActive ? 'deactivate' : 'activate') + '" onclick="adminToggleRoom(\'' + escapeJsSingleQuote(room['회의실ID']) + '\', ' + !isActive + ')">' +
             (isActive ? '비활성화' : '활성화') +
           '</button>' +
-          '<button class="room-delete-btn" onclick="adminRemoveRoom(\'' + room['회의실ID'] + '\')">' +
+          '<button class="room-delete-btn" onclick="adminRemoveRoom(\'' + escapeJsSingleQuote(room['회의실ID']) + '\')">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
           '</button>' +
         '</div>' +
