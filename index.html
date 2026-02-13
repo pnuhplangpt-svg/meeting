@@ -1372,13 +1372,17 @@
       display: flex;
       flex-direction: column;
       overflow: hidden;
+      overflow-x: hidden;
+      max-width: 100vw;
       padding: 12px;
       gap: 12px;
       background: var(--white);
+      box-sizing: border-box;
     }
 
     /* ── 좌측/상단: 현재 상태 카드 ── */
     .display-panel-status {
+      min-width: 0;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -1519,6 +1523,7 @@
     /* ── 우측/하단: 시간표 카드 ── */
     .display-panel-schedule {
       flex: 1;
+      min-width: 0;
       overflow: hidden;
       padding: 0;
       background: var(--gray-bg);
@@ -1728,16 +1733,19 @@
         overflow-y: auto;
       }
 
-      /* ── 디스플레이: 가로 시 좌우 카드 분할 (현황 55% / 타임라인 45%) ── */
+      /* ── 디스플레이: 가로 시 좌우 카드 분할 (현황/타임라인) ── */
       .display-body {
-        flex-direction: row;
-        padding: 14px;
+        display: grid;
+        grid-template-columns: 55fr 45fr;
         gap: 14px;
+        padding: 14px;
+        box-sizing: border-box;
+        max-width: 100vw;
+        overflow-x: hidden;
       }
 
       .display-panel-status {
-        width: 55%;
-        flex-shrink: 0;
+        min-width: 0;
         padding: 32px 40px;
       }
 
@@ -1764,8 +1772,8 @@
       }
 
       .display-panel-schedule {
-        width: 45%;
-        flex: none;
+        min-width: 0;
+        width: auto;
       }
 
       .ds-timeline-header {
@@ -1801,6 +1809,19 @@
 
       .dp-qr-text {
         font-size: 16px;
+      }
+    }
+
+
+    @media (orientation: landscape) and (min-width: 1024px) {
+      .display-body {
+        grid-template-columns: 60fr 40fr;
+      }
+    }
+
+    @media (orientation: landscape) and (min-width: 1600px) {
+      .display-body {
+        grid-template-columns: 65fr 35fr;
       }
     }
 
