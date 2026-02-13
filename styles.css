@@ -572,7 +572,25 @@
       color: var(--gray-text);
       font-size: 15px;
     }
+    .offline-banner {
+      position: sticky;
+      top: 0;
+      z-index: 120;
+      margin: 0 24px;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--red);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow-md);
+      display: none;
+    }
 
+    .offline-banner.show {
+      display: block;
+    }
     /* ─── Toast ────────────────────────────────────── */
     .toast-container {
       position: fixed;

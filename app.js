@@ -80,6 +80,18 @@ function formatApiError(error, fallbackMessage) {
   return fallback;
 }
 
+function initNetworkBanner() {
+  var banner = document.getElementById('offlineBanner');
+  if (!banner) return;
+
+  function updateOnlineState() {
+    banner.classList.toggle('show', !navigator.onLine);
+  }
+
+  updateOnlineState();
+  window.addEventListener('online', updateOnlineState);
+  window.addEventListener('offline', updateOnlineState);
+}
 // ═══════════════════════════════════════════════════════
 // 초기화
 // ═══════════════════════════════════════════════════════
@@ -87,6 +99,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // 디스플레이 모드 감지 (?display=6F 등)
   if (initDisplayMode()) {
     // 디스플레이 모드: 일반 UI 초기화 건너뜀
+    initNetworkBanner();
     if ('serviceWorker' in navigator) {
       navigator.serviceWorker.register('service-worker.js').catch(function() {});
     }
@@ -96,6 +109,7 @@ document.addEventListener('DOMContentLoaded', function() {
   // 일반 모드
   bindUiActions();
   setTodayDate();
+  initNetworkBanner();
   navigateTo('screenHome');
   initInstallBanner();
 
@@ -113,6 +127,7 @@ function setTodayDate() {
     days[now.getDay()] + '요일';
   document.getElementById('todayDate').textContent = str;
 }
+
 
 function bindUiActions() {
   var byId = function(id) { return document.getElementById(id); };
@@ -177,6 +192,8 @@ function bindUiActions() {
     if (action === 'admin-remove-room') return adminRemoveRoom(el.dataset.roomId);
   });
 }
+
+
 // ═══════════════════════════════════════════════════════
 // 회의실 목록 로드 (메인 화면)
 // ═══════════════════════════════════════════════════════
@@ -534,6 +551,7 @@ function renderTimeGrid(reservedSlots) {
       } else if (state.selectedStartTime === time) {
         classes += ' selected';
       }
+
       html += '<button class="' + classes + '" data-action="select-time" data-time="' + time + '">' + displayTime + '</button>';
     }
   }
