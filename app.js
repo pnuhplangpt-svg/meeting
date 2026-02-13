@@ -95,7 +95,6 @@ function initNetworkBanner() {
   window.addEventListener('offline', updateOnlineState);
 }
 
-
 // ═══════════════════════════════════════════════════════
 // 초기화
 // ═══════════════════════════════════════════════════════
@@ -149,9 +148,7 @@ function bindUiActions() {
   if (btnStartReserve) btnStartReserve.addEventListener('click', startReservation);
 
   var btnConfirmReserve = byId('btnConfirmReserve');
-
   if (btnConfirmReserve) btnConfirmReserve.addEventListener('click', handleConfirmReservation);
-
 
   var btnExitAdminMode = byId('btnExitAdminMode');
   if (btnExitAdminMode) btnExitAdminMode.addEventListener('click', exitAdminMode);
@@ -198,7 +195,6 @@ function bindUiActions() {
     if (action === 'admin-remove-room') return adminRemoveRoom(el.dataset.roomId);
   });
 }
-
 
 // ═══════════════════════════════════════════════════════
 // 회의실 목록 로드 (메인 화면)
@@ -358,7 +354,6 @@ function renderCalendar() {
   const daysInPrevMonth = new Date(year, month, 0).getDate();
 
   let html = '<div class="calendar-nav">';
-
   html += '<button data-action="calendar-prev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>';
   html += '<span class="calendar-month">' + year + '년 ' + monthNames[month] + '</span>';
   html += '<button data-action="calendar-next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>';
@@ -694,12 +689,12 @@ function updateConfirmButton() {
     /^\d{4}$/.test(pw);
 
   btn.disabled = !isValid;
-
   if (state.editReservationId) {
     btn.textContent = isValid ? '예약 수정' : '모든 정보를 입력해주세요';
   } else {
     btn.textContent = isValid ? '예약 완료' : '모든 정보를 입력해주세요';
   }
+}
 
 // 입력 필드 이벤트 리스너
 document.addEventListener('input', function(e) {
