@@ -94,6 +94,7 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   // 일반 모드
+  bindUiActions();
   setTodayDate();
   navigateTo('screenHome');
   initInstallBanner();
@@ -113,6 +114,69 @@ function setTodayDate() {
   document.getElementById('todayDate').textContent = str;
 }
 
+function bindUiActions() {
+  var byId = function(id) { return document.getElementById(id); };
+
+  var btnOpenAdminAuth = byId('btnOpenAdminAuth');
+  if (btnOpenAdminAuth) btnOpenAdminAuth.addEventListener('click', openAdminAuth);
+
+  var btnDismissInstallBanner = byId('btnDismissInstallBanner');
+  if (btnDismissInstallBanner) btnDismissInstallBanner.addEventListener('click', dismissInstallBanner);
+
+  var installBtn = byId('installBtn');
+  if (installBtn) installBtn.addEventListener('click', handleInstallClick);
+
+  var btnStartReserve = byId('btnStartReserve');
+  if (btnStartReserve) btnStartReserve.addEventListener('click', startReservation);
+
+  var btnConfirmReserve = byId('btnConfirmReserve');
+  if (btnConfirmReserve) btnConfirmReserve.addEventListener('click', submitReservation);
+
+  var btnExitAdminMode = byId('btnExitAdminMode');
+  if (btnExitAdminMode) btnExitAdminMode.addEventListener('click', exitAdminMode);
+
+  var btnAdminRefresh = byId('btnAdminRefresh');
+  if (btnAdminRefresh) btnAdminRefresh.addEventListener('click', adminRefresh);
+
+  var btnAdminDeletePast = byId('btnAdminDeletePast');
+  if (btnAdminDeletePast) btnAdminDeletePast.addEventListener('click', adminDeletePast);
+
+  var btnAdminAddRoom = byId('btnAdminAddRoom');
+  if (btnAdminAddRoom) btnAdminAddRoom.addEventListener('click', adminAddRoom);
+
+  var btnVerifyAdminCode = byId('btnVerifyAdminCode');
+  if (btnVerifyAdminCode) btnVerifyAdminCode.addEventListener('click', verifyAdminCode);
+
+  var btnDisplayRefresh = byId('btnDisplayRefresh');
+  if (btnDisplayRefresh) btnDisplayRefresh.addEventListener('click', loadDisplayData);
+
+  var btnFullscreen = byId('btnFullscreen');
+  if (btnFullscreen) btnFullscreen.addEventListener('click', toggleDisplayFullscreen);
+
+  document.addEventListener('click', function(e) {
+    var el = e.target.closest('[data-action]');
+    if (!el) return;
+
+    var action = el.dataset.action;
+    if (action === 'go-my-reservations') return navigateTo('screenMyReservations');
+    if (action === 'go-home') return navigateTo('screenHome');
+    if (action === 'reset-home') return resetAndGoHome();
+    if (action === 'close-modal') return closeModal(el.dataset.modalId);
+    if (action === 'switch-tab') return switchTab(el);
+    if (action === 'switch-admin-tab') return switchAdminTab(el);
+    if (action === 'admin-filter') return adminFilter(el);
+    if (action === 'select-floor') return selectFloor(el);
+    if (action === 'calendar-prev') return changeMonth(-1);
+    if (action === 'calendar-next') return changeMonth(1);
+    if (action === 'select-date') return selectDate(el.dataset.date);
+    if (action === 'select-time') return selectTime(el.dataset.time);
+    if (action === 'request-edit') return requestEdit(el.dataset.id);
+    if (action === 'request-delete') return requestDelete(el.dataset.id);
+    if (action === 'admin-delete-one') return adminDeleteOne(el.dataset.id);
+    if (action === 'admin-toggle-room') return adminToggleRoom(el.dataset.roomId, el.dataset.active === 'true');
+    if (action === 'admin-remove-room') return adminRemoveRoom(el.dataset.roomId);
+  });
+}
 // ═══════════════════════════════════════════════════════
 // 회의실 목록 로드 (메인 화면)
 // ═══════════════════════════════════════════════════════
@@ -159,7 +223,7 @@ function renderFloorGrid() {
   var html = '';
   roomList.forEach(function(room) {
     html +=
-      '<div class="floor-card" data-floor="' + escapeHtml(room['층']) + '" onclick="selectFloor(this)">' +
+      '<div class="floor-card" data-action="select-floor" data-floor="' + escapeHtml(room['층']) + '">' +
         '<div class="floor-number">' + escapeHtml(room['층']) + '</div>' +
         '<div class="floor-label">' + escapeHtml(room['이름']) + '</div>' +
       '</div>';
@@ -269,9 +333,10 @@ function renderCalendar() {
   const daysInPrevMonth = new Date(year, month, 0).getDate();
 
   let html = '<div class="calendar-nav">';
-  html += '<button onclick="changeMonth(-1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>';
+
+  html += '<button data-action="calendar-prev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>';
   html += '<span class="calendar-month">' + year + '년 ' + monthNames[month] + '</span>';
-  html += '<button onclick="changeMonth(1)"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>';
+  html += '<button data-action="calendar-next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>';
   html += '</div>';
 
   html += '<div class="calendar-weekdays">';
@@ -305,7 +370,7 @@ function renderCalendar() {
       classes += ' selected';
     }
 
-    html += '<button class="' + classes + '" onclick="selectDate(\'' + dateStr + '\')">' + d + '</button>';
+    html += '<button class="' + classes + '" data-action="select-date" data-date="' + dateStr + '">' + d + '</button>';
   }
 
   // 다음 달
@@ -469,8 +534,7 @@ function renderTimeGrid(reservedSlots) {
       } else if (state.selectedStartTime === time) {
         classes += ' selected';
       }
-
-      html += '<button class="' + classes + '" data-time="' + time + '" onclick="selectTime(\'' + time + '\')">' + displayTime + '</button>';
+      html += '<button class="' + classes + '" data-action="select-time" data-time="' + time + '">' + displayTime + '</button>';
     }
   }
 
@@ -638,13 +702,13 @@ function showCompleteScreen(data) {
   const card = document.getElementById('completeCard');
   card.innerHTML =
     '<div class="card-header">' +
-      '<span class="card-floor">' + data['층'] + '</span>' +
-      '<span class="card-time">' + data['시작시간'] + ' ~ ' + data['종료시간'] + '</span>' +
+      '<span class="card-floor">' + escapeHtml(data['층']) + '</span>' +
+      '<span class="card-time">' + escapeHtml(data['시작시간']) + ' ~ ' + escapeHtml(data['종료시간']) + '</span>' +
     '</div>' +
     '<div class="card-info">' +
       '<div class="card-row"><span class="label">날짜</span><span class="value">' + formatDateKr(data['날짜']) + '</span></div>' +
-      '<div class="card-row"><span class="label">팀명</span><span class="value">' + data['팀명'] + '</span></div>' +
-      '<div class="card-row"><span class="label">예약자</span><span class="value">' + data['예약자'] + '</span></div>' +
+      '<div class="card-row"><span class="label">팀명</span><span class="value">' + escapeHtml(data['팀명']) + '</span></div>' +
+      '<div class="card-row"><span class="label">예약자</span><span class="value">' + escapeHtml(data['예약자']) + '</span></div>' +
     '</div>';
 
   showScreen('screenComplete');
@@ -731,8 +795,8 @@ function renderReservations() {
             '<div class="card-row"><span class="label">예약자</span><span class="value">' + escapeHtml(r['예약자']) + '</span></div>' +
           '</div>' +
           '<div class="card-actions">' +
-            '<button class="btn btn-outline" style="flex:1" onclick="requestEdit(\'' + escapeJsSingleQuote(r['예약ID']) + '\')">수정</button>' +
-            '<button class="btn btn-outline-red" style="flex:1" onclick="requestDelete(\'' + escapeJsSingleQuote(r['예약ID']) + '\')">삭제</button>' +
+            '<button class="btn btn-outline" style="flex:1" data-action="request-edit" data-id="' + escapeHtml(r['예약ID']) + '">수정</button>' +
+            '<button class="btn btn-outline-red" style="flex:1" data-action="request-delete" data-id="' + escapeHtml(r['예약ID']) + '">삭제</button>' +
           '</div>' +
         '</div>';
     });
@@ -1001,6 +1065,35 @@ function showLoading(show) {
 // ═══════════════════════════════════════════════════════
 // API 통신
 // ═══════════════════════════════════════════════════════
+var API_TIMEOUT_MS = 10000;
+
+async function fetchWithTimeoutAndRetry(url, options, retries) {
+  var attempts = retries == null ? 0 : retries;
+  var lastError = null;
+
+  for (var i = 0; i <= attempts; i++) {
+    var controller = new AbortController();
+    var timer = setTimeout(function() { controller.abort(); }, API_TIMEOUT_MS);
+
+    try {
+      var response = await fetch(url, Object.assign({}, options || {}, { signal: controller.signal }));
+      clearTimeout(timer);
+
+      if (response.status >= 500 && i < attempts) {
+        continue;
+      }
+      return response;
+    } catch (e) {
+      clearTimeout(timer);
+      lastError = e;
+      if (i >= attempts) {
+        throw e;
+      }
+    }
+  }
+
+  throw lastError || new Error('Network request failed');
+}
 async function apiGet(action, params) {
   let url = API_URL + '?action=' + encodeURIComponent(action);
   Object.keys(params).forEach(function(key) {
@@ -1009,7 +1102,7 @@ async function apiGet(action, params) {
     }
   });
 
-  const response = await fetch(url, { redirect: 'follow' });
+  const response = await fetchWithTimeoutAndRetry(url, { redirect: 'follow' }, 1);
   if (!response.ok) {
     throw new Error('HTTP ' + response.status + ' (' + action + ')');
   }
@@ -1025,7 +1118,7 @@ async function apiGet(action, params) {
 
 async function apiPost(body) {
   const action = body && body.action ? body.action : 'unknown';
-  const response = await fetch(API_URL, {
+  const response = await fetchWithTimeoutAndRetry(API_URL, {
     method: 'POST',
     redirect: 'follow',
     headers: { 'Content-Type': 'text/plain' },
@@ -1664,7 +1757,7 @@ function renderAdminList() {
         '<div class="admin-reservation-card fade-in" style="' + (isPast ? 'opacity:0.6' : '') + '">' +
           '<div class="admin-card-top">' +
             '<span class="card-floor">' + escapeHtml(r['층']) + '</span>' +
-            '<button class="btn btn-outline-red" style="padding:6px 14px; font-size:12px; min-height:32px;" onclick="adminDeleteOne(\'' + escapeJsSingleQuote(r['예약ID']) + '\')">삭제</button>' +
+            '<button class="btn btn-outline-red" style="padding:6px 14px; font-size:12px; min-height:32px;" data-action="admin-delete-one" data-id="' + escapeHtml(r['예약ID']) + '">삭제</button>' +
           '</div>' +
           '<div class="admin-card-meta">' +
             '<div class="meta-item"><span class="meta-label">시간</span><span class="meta-value">' + escapeHtml(r['시작시간']) + '~' + escapeHtml(r['종료시간']) + '</span></div>' +
@@ -1820,10 +1913,10 @@ function renderAdminRooms() {
           '</div>' +
         '</div>' +
         '<div class="room-actions">' +
-          '<button class="room-toggle-btn ' + (isActive ? 'deactivate' : 'activate') + '" onclick="adminToggleRoom(\'' + escapeJsSingleQuote(room['회의실ID']) + '\', ' + !isActive + ')">' +
+          '<button class="room-toggle-btn ' + (isActive ? 'deactivate' : 'activate') + '" data-action="admin-toggle-room" data-room-id="' + escapeHtml(room['회의실ID']) + '" data-active="' + (!isActive) + '">' +
             (isActive ? '비활성화' : '활성화') +
           '</button>' +
-          '<button class="room-delete-btn" onclick="adminRemoveRoom(\'' + escapeJsSingleQuote(room['회의실ID']) + '\')">' +
+          '<button class="room-delete-btn" data-action="admin-remove-room" data-room-id="' + escapeHtml(room['회의실ID']) + '">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
           '</button>' +
         '</div>' +

@@ -13,6 +13,23 @@ const STATIC_ASSETS = [
   './qrcode.min.js'
 ];
 
+const STATIC_CACHE_PATHS = new Set([
+  '/',
+  '/index.html',
+  '/manifest.json',
+  '/styles.css',
+  '/app.js',
+  '/qrcode.min.js'
+]);
+
+
+function isCacheableStaticRequest(request, url) {
+  if (request.method !== 'GET') return false;
+  if (url.origin !== self.location.origin) return false;
+  if (url.search) return false;
+  return STATIC_CACHE_PATHS.has(url.pathname);
+}
+
 // ─── 설치 ───────────────────────────────────────────────
 self.addEventListener('install', function(event) {
   event.waitUntil(
@@ -60,8 +77,7 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  const sameOrigin = url.origin === self.location.origin;
-  if (!sameOrigin) {
+  if (!isCacheableStaticRequest(event.request, url)) {
     return;
   }
 
