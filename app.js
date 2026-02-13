@@ -113,10 +113,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initNetworkBanner();
   navigateTo('screenHome');
   initInstallBanner();
-
   registerServiceWorker();
 });
-
 
 
 function registerServiceWorker() {
@@ -737,6 +735,7 @@ function updateConfirmButton() {
     state.selectedEndTime &&
     team.length > 0 &&
     name.length > 0 &&
+
     (state.editReservationId ? true : /^\d{4}$/.test(pw));
 
   btn.disabled = !isValid;
@@ -972,8 +971,8 @@ async function verifyAndEdit(id) {
         document.getElementById('inputTeam').value = reservation['팀명'];
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = '';
-        setReservationPasswordMode(true);
 
+        setReservationPasswordMode(true);
         renderCalendar();
         await loadTimeSlots();
         showFormSection();
