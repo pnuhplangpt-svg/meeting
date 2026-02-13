@@ -59,27 +59,6 @@ function escapeJsSingleQuote(value) {
     .split('\n').join('\\n')
     .split('\r').join('\\r');
 }
-
-function formatApiError(error, fallbackMessage) {
-  var fallback = fallbackMessage || '요청 처리 중 오류가 발생했습니다.';
-  if (!error || !error.message) return fallback;
-
-  var message = String(error.message);
-  if (message.indexOf('HTTP 401') === 0 || message.indexOf('HTTP 403') === 0) {
-    return '인증이 만료되었거나 권한이 없습니다.';
-  }
-  if (message.indexOf('HTTP 5') === 0) {
-    return '서버 오류가 발생했습니다. 잠시 후 다시 시도해주세요.';
-  }
-  if (message.indexOf('HTTP') === 0) {
-    return '네트워크 요청에 실패했습니다. 잠시 후 다시 시도해주세요.';
-  }
-  if (message.indexOf('JSON parse error') === 0) {
-    return '서버 응답을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.';
-  }
-  return fallback;
-}
-
 // ═══════════════════════════════════════════════════════
 // 초기화
 // ═══════════════════════════════════════════════════════
@@ -630,7 +609,6 @@ async function submitReservation() {
     }
   } catch (e) {
     showLoading(false);
-    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
   }
 }
 
@@ -676,7 +654,6 @@ async function loadReservations() {
       list.innerHTML = '<div class="empty-state"><p>데이터를 불러올 수 없습니다.</p></div>';
     }
   } catch (e) {
-    list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(formatApiError(e, '서버에 연결할 수 없습니다.')) + '</p></div>';
   }
 }
 
@@ -838,7 +815,6 @@ async function verifyAndEdit(id) {
   } catch (e) {
     state.reservationAuthToken = null;
     showLoading(false);
-    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
   }
 }
 
@@ -872,7 +848,6 @@ async function submitUpdate(id) {
     }
   } catch (e) {
     showLoading(false);
-    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
   }
 }
 
@@ -929,12 +904,10 @@ async function verifyAndDelete(id) {
         }
       } catch (e) {
         showLoading(false);
-        showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
       }
     };
   } catch (e) {
     showLoading(false);
-    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
   }
 }
 
@@ -1003,10 +976,6 @@ function showLoading(show) {
 // ═══════════════════════════════════════════════════════
 async function apiGet(action, params) {
   let url = API_URL + '?action=' + encodeURIComponent(action);
-  Object.keys(params).forEach(function(key) {
-    if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
-      url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
-    }
   });
 
   const response = await fetch(url, { redirect: 'follow' });
@@ -1524,7 +1493,6 @@ async function verifyAdminCode() {
   } catch (e) {
     adminAuthToken = '';
     showLoading(false);
-    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
   }
 }
 
@@ -1584,11 +1552,6 @@ async function adminRefresh() {
       renderAdminStats();
       renderAdminList();
     } else {
-      list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(res.error || '데이터를 불러올 수 없습니다.') + '</p></div>';
-    }
-  } catch (e) {
-    showLoading(false);
-    list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(formatApiError(e, '서버에 연결할 수 없습니다.')) + '</p></div>';
   }
 }
 
@@ -1714,7 +1677,6 @@ function adminDeleteOne(id) {
       }
     } catch (e) {
       showLoading(false);
-      showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
     }
   };
 }
@@ -1794,7 +1756,6 @@ async function loadAdminRooms() {
       list.innerHTML = '<div class="empty-state"><p>데이터를 불러올 수 없습니다.</p></div>';
     }
   } catch (e) {
-    list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(formatApiError(e, '서버 연결에 실패했습니다.')) + '</p></div>';
   }
 }
 
@@ -1854,7 +1815,6 @@ async function adminToggleRoom(roomId, active) {
     }
   } catch (e) {
     showLoading(false);
-    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
   }
 }
 
@@ -1889,7 +1849,6 @@ async function adminAddRoom() {
     }
   } catch (e) {
     showLoading(false);
-    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
   }
 }
 
@@ -1920,7 +1879,6 @@ function adminRemoveRoom(roomId) {
       }
     } catch (e) {
       showLoading(false);
-      showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
     }
   };
 }

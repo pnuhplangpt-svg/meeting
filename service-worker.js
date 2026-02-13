@@ -60,11 +60,6 @@ self.addEventListener('fetch', function(event) {
     return;
   }
 
-  const sameOrigin = url.origin === self.location.origin;
-  if (!sameOrigin) {
-    return;
-  }
-
   // 정적 자산: 캐시 우선, 네트워크 폴백
   event.respondWith(
     caches.match(event.request).then(function(cachedResponse) {
