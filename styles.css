@@ -1,0 +1,1914 @@
+    /* ─── Reset & Base ─────────────────────────────── */
+    *, *::before, *::after {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    :root {
+      --green: #006241;
+      --green-light: #00754a;
+      --green-pale: #d4e9e2;
+      --green-bg: #eaf5f0;
+      --white: #ffffff;
+      --gray-bg: #f6f6f6;
+      --gray-light: #e8e8e8;
+      --gray-mid: #c0c0c0;
+      --gray-text: #6b6b6b;
+      --dark: #1e3932;
+      --black: #000000;
+      --red: #d62b1e;
+      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
+      --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+      --radius-sm: 12px;
+      --radius-md: 16px;
+      --radius-lg: 24px;
+      --radius-full: 50px;
+      --transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      --safe-bottom: env(safe-area-inset-bottom, 0px);
+    }
+
+    html {
+      font-size: 16px;
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--white);
+      color: var(--black);
+      line-height: 1.5;
+      overflow-x: hidden;
+      min-height: 100vh;
+      min-height: 100dvh;
+    }
+
+    /* ─── App Container ────────────────────────────── */
+    .app {
+      max-width: 480px;
+      margin: 0 auto;
+      min-height: 100vh;
+      min-height: 100dvh;
+      position: relative;
+      background: var(--white);
+    }
+
+    /* ─── Screens ──────────────────────────────────── */
+    .screen {
+      display: none;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: opacity 0.35s ease, transform 0.35s ease;
+      padding-bottom: 120px;
+    }
+
+    .screen.active {
+      display: block;
+    }
+
+    .screen.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ─── Header ───────────────────────────────────── */
+    .header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      background: var(--white);
+      padding: 16px 24px;
+      border-bottom: 1px solid rgba(0,0,0,0.04);
+    }
+
+    .header-back {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: none;
+      border: none;
+      font-size: 15px;
+      color: var(--green);
+      cursor: pointer;
+      padding: 8px 0;
+      margin-bottom: 4px;
+      font-weight: 500;
+      transition: var(--transition);
+    }
+
+    .header-back:active {
+      opacity: 0.6;
+    }
+
+    .header-back svg {
+      width: 20px;
+      height: 20px;
+    }
+
+    .header h1 {
+      font-size: 26px;
+      font-weight: 700;
+      color: var(--dark);
+      letter-spacing: -0.5px;
+    }
+
+    .header .subtitle {
+      font-size: 14px;
+      color: var(--gray-text);
+      margin-top: 2px;
+      font-weight: 400;
+    }
+
+    /* ─── Section ──────────────────────────────────── */
+    .section {
+      padding: 20px 24px;
+    }
+
+    .section-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 14px;
+      letter-spacing: -0.3px;
+    }
+
+    .section-desc {
+      font-size: 13px;
+      color: var(--gray-text);
+      margin-top: -8px;
+      margin-bottom: 14px;
+    }
+
+    /* ─── Floor Cards ──────────────────────────────── */
+    .floor-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 12px;
+    }
+
+    .floor-card {
+      background: var(--gray-bg);
+      border: 2px solid transparent;
+      border-radius: var(--radius-md);
+      padding: 24px 16px;
+      text-align: center;
+      cursor: pointer;
+      transition: var(--transition);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .floor-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: var(--green);
+      opacity: 0;
+      transition: opacity 0.3s ease;
+      border-radius: var(--radius-md);
+    }
+
+    .floor-card:active {
+      transform: scale(0.96);
+    }
+
+    .floor-card.selected {
+      border-color: var(--green);
+      background: var(--green-bg);
+    }
+
+    .floor-card.selected::before {
+      opacity: 0.05;
+    }
+
+    .floor-card .floor-number {
+      font-size: 32px;
+      font-weight: 800;
+      color: var(--dark);
+      position: relative;
+      z-index: 1;
+      transition: var(--transition);
+    }
+
+    .floor-card.selected .floor-number {
+      color: var(--green);
+    }
+
+    .floor-card .floor-label {
+      font-size: 13px;
+      color: var(--gray-text);
+      margin-top: 4px;
+      position: relative;
+      z-index: 1;
+      transition: var(--transition);
+    }
+
+    .floor-card.selected .floor-label {
+      color: var(--green);
+      font-weight: 600;
+    }
+
+    /* ─── Calendar ─────────────────────────────────── */
+    .calendar-container {
+      background: var(--white);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+
+    .calendar-nav {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 4px 0 16px;
+    }
+
+    .calendar-nav button {
+      width: 40px;
+      height: 40px;
+      border-radius: 50%;
+      border: none;
+      background: var(--gray-bg);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .calendar-nav button:active {
+      transform: scale(0.9);
+      background: var(--gray-light);
+    }
+
+    .calendar-nav button svg {
+      width: 18px;
+      height: 18px;
+      color: var(--dark);
+    }
+
+    .calendar-month {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .calendar-weekdays {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      text-align: center;
+      margin-bottom: 8px;
+    }
+
+    .calendar-weekdays span {
+      font-size: 12px;
+      color: var(--gray-mid);
+      font-weight: 600;
+      padding: 8px 0;
+    }
+
+    .calendar-days {
+      display: grid;
+      grid-template-columns: repeat(7, 1fr);
+      gap: 4px;
+    }
+
+    .calendar-day {
+      aspect-ratio: 1;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      font-size: 14px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      border: none;
+      background: none;
+      color: var(--black);
+    }
+
+    .calendar-day:active {
+      transform: scale(0.85);
+    }
+
+    .calendar-day.today {
+      background: var(--green-pale);
+      color: var(--green);
+      font-weight: 700;
+    }
+
+    .calendar-day.selected {
+      background: var(--green);
+      color: var(--white);
+      font-weight: 700;
+    }
+
+    .calendar-day.disabled {
+      color: var(--gray-light);
+      cursor: default;
+      pointer-events: none;
+    }
+
+    .calendar-day.other-month {
+      color: var(--gray-light);
+    }
+
+    /* ─── Time Slots ───────────────────────────────── */
+    .time-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: 8px;
+    }
+
+    .time-slot {
+      padding: 12px 4px;
+      border-radius: var(--radius-sm);
+      border: 1.5px solid var(--gray-light);
+      background: var(--white);
+      text-align: center;
+      font-size: 13px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: var(--transition);
+      color: var(--dark);
+    }
+
+    .time-slot:active {
+      transform: scale(0.94);
+    }
+
+    .time-slot.selected {
+      background: var(--green);
+      border-color: var(--green);
+      color: var(--white);
+      font-weight: 600;
+    }
+
+    .time-slot.reserved {
+      background: var(--gray-bg);
+      border-color: var(--gray-bg);
+      color: var(--gray-mid);
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .time-slot.in-range {
+      background: var(--green-bg);
+      border-color: var(--green-light);
+      color: var(--green);
+    }
+
+    .time-slot.time-slot-hidden {
+      display: none;
+    }
+
+    /* ─── Form Input ───────────────────────────────── */
+    .input-group {
+      margin-bottom: 16px;
+    }
+
+    .input-group label {
+      display: block;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 8px;
+    }
+
+    .input-group input {
+      width: 100%;
+      padding: 14px 16px;
+      border: 1.5px solid var(--gray-light);
+      border-radius: var(--radius-sm);
+      font-size: 15px;
+      font-family: inherit;
+      transition: var(--transition);
+      background: var(--white);
+      color: var(--black);
+      outline: none;
+    }
+
+    .input-group input::placeholder {
+      color: var(--gray-mid);
+    }
+
+    .input-group input:focus {
+      border-color: var(--green);
+      box-shadow: 0 0 0 3px rgba(0, 98, 65, 0.08);
+    }
+
+    /* ─── Buttons ──────────────────────────────────── */
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      font-family: inherit;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      border: none;
+      outline: none;
+      -webkit-user-select: none;
+      user-select: none;
+    }
+
+    .btn:active {
+      transform: scale(0.96);
+    }
+
+    .btn-primary {
+      background: var(--green);
+      color: var(--white);
+      font-size: 16px;
+      padding: 16px 32px;
+      border-radius: var(--radius-full);
+      width: 100%;
+      min-height: 52px;
+    }
+
+    .btn-primary:disabled {
+      background: var(--gray-light);
+      color: var(--gray-mid);
+      cursor: not-allowed;
+      transform: none;
+    }
+
+    .btn-outline {
+      background: transparent;
+      color: var(--green);
+      font-size: 14px;
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--green);
+      min-height: 40px;
+    }
+
+    .btn-outline:active {
+      background: var(--green-bg);
+    }
+
+    .btn-outline-red {
+      background: transparent;
+      color: var(--red);
+      font-size: 14px;
+      padding: 10px 20px;
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--red);
+      min-height: 40px;
+    }
+
+    .btn-outline-red:active {
+      background: #fef2f2;
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--gray-text);
+      font-size: 14px;
+      padding: 10px 16px;
+      border-radius: var(--radius-full);
+    }
+
+    /* ─── Bottom CTA ───────────────────────────────── */
+    .bottom-cta {
+      position: fixed;
+      bottom: 0;
+      left: 50%;
+      transform: translateX(-50%);
+      width: 100%;
+      max-width: 480px;
+      padding: 16px 24px;
+      padding-bottom: calc(16px + var(--safe-bottom));
+      background: linear-gradient(to top, var(--white) 80%, transparent);
+      z-index: 200;
+    }
+
+    /* ─── Reservation Card ─────────────────────────── */
+    .reservation-card {
+      background: var(--white);
+      border: 1px solid var(--gray-light);
+      border-radius: var(--radius-md);
+      padding: 20px;
+      margin-bottom: 12px;
+      transition: var(--transition);
+    }
+
+    .reservation-card .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 14px;
+    }
+
+    .reservation-card .card-floor {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-bg);
+      color: var(--green);
+      font-size: 14px;
+      font-weight: 700;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+    }
+
+    .reservation-card .card-time {
+      font-size: 13px;
+      color: var(--gray-text);
+      font-weight: 500;
+    }
+
+    .reservation-card .card-info {
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
+    }
+
+    .reservation-card .card-row {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+    }
+
+    .reservation-card .card-row .label {
+      color: var(--gray-text);
+      min-width: 52px;
+    }
+
+    .reservation-card .card-row .value {
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    .reservation-card .card-actions {
+      display: flex;
+      gap: 8px;
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--gray-bg);
+    }
+
+    /* ─── Empty State ──────────────────────────────── */
+    .empty-state {
+      text-align: center;
+      padding: 48px 24px;
+    }
+
+    .empty-state svg {
+      width: 64px;
+      height: 64px;
+      color: var(--gray-light);
+      margin-bottom: 16px;
+    }
+
+    .empty-state p {
+      color: var(--gray-text);
+      font-size: 15px;
+    }
+
+    .offline-banner {
+      position: sticky;
+      top: 0;
+      z-index: 120;
+      margin: 0 24px;
+      margin-top: 10px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--red);
+      color: var(--white);
+      font-size: 13px;
+      font-weight: 600;
+      box-shadow: var(--shadow-md);
+      display: none;
+    }
+
+    .offline-banner.show {
+      display: block;
+    }
+
+    /* ─── Toast ────────────────────────────────────── */
+    .toast-container {
+      position: fixed;
+      top: 24px;
+      left: 50%;
+      transform: translateX(-50%);
+      z-index: 9999;
+      max-width: 440px;
+      width: calc(100% - 48px);
+    }
+
+    .toast {
+      background: var(--dark);
+      color: var(--white);
+      padding: 14px 20px;
+      border-radius: var(--radius-sm);
+      font-size: 14px;
+      font-weight: 500;
+      opacity: 0;
+      transform: translateY(-12px);
+      transition: all 0.3s ease;
+      margin-bottom: 8px;
+      text-align: center;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .toast.error {
+      background: var(--red);
+    }
+
+    .toast.success {
+      background: var(--green);
+    }
+
+    /* ─── Modal ────────────────────────────────────── */
+    .modal-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,0.35);
+      z-index: 500;
+      display: flex;
+      align-items: flex-end;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .modal-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    .modal {
+      background: var(--white);
+      border-radius: var(--radius-lg) var(--radius-lg) 0 0;
+      padding: 32px 24px;
+      padding-bottom: calc(32px + var(--safe-bottom));
+      width: 100%;
+      max-width: 480px;
+      transform: translateY(100%);
+      transition: transform 0.35s cubic-bezier(0.4, 0, 0.2, 1);
+    }
+
+    .modal-overlay.show .modal {
+      transform: translateY(0);
+    }
+
+    .modal-handle {
+      width: 40px;
+      height: 4px;
+      border-radius: 2px;
+      background: var(--gray-light);
+      margin: 0 auto 20px;
+    }
+
+    .modal h3 {
+      font-size: 18px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 20px;
+      text-align: center;
+    }
+
+    .modal .btn-group {
+      display: flex;
+      gap: 10px;
+      margin-top: 20px;
+    }
+
+    .modal .btn-group .btn {
+      flex: 1;
+    }
+
+    /* ─── Loading Spinner ──────────────────────────── */
+    .spinner {
+      width: 24px;
+      height: 24px;
+      border: 3px solid var(--gray-light);
+      border-top-color: var(--green);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .loading-overlay {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(255,255,255,0.7);
+      z-index: 1000;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      opacity: 0;
+      visibility: hidden;
+      transition: all 0.2s ease;
+    }
+
+    .loading-overlay.show {
+      opacity: 1;
+      visibility: visible;
+    }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    /* ─── Time Range Hint ──────────────────────────── */
+    .time-hint {
+      text-align: center;
+      padding: 12px;
+      margin-bottom: 8px;
+      background: var(--green-bg);
+      border-radius: var(--radius-sm);
+      font-size: 13px;
+      color: var(--green);
+      font-weight: 500;
+    }
+
+    /* ─── Tab Bar (My Reservations) ────────────────── */
+    .tab-bar {
+      display: flex;
+      border-bottom: 1px solid var(--gray-light);
+      padding: 0 24px;
+      background: var(--white);
+      position: sticky;
+      top: 0;
+      z-index: 50;
+    }
+
+    .tab-item {
+      flex: 1;
+      padding: 14px 0;
+      text-align: center;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--gray-mid);
+      border: none;
+      background: none;
+      cursor: pointer;
+      position: relative;
+      transition: var(--transition);
+    }
+
+    .tab-item.active {
+      color: var(--green);
+    }
+
+    .tab-item.active::after {
+      content: '';
+      position: absolute;
+      bottom: -1px;
+      left: 0;
+      right: 0;
+      height: 2px;
+      background: var(--green);
+      border-radius: 1px;
+    }
+
+    /* ─── Divider ──────────────────────────────────── */
+    .divider {
+      height: 8px;
+      background: var(--gray-bg);
+    }
+
+    /* ─── Badge ────────────────────────────────────── */
+    .date-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: var(--green-bg);
+      color: var(--green);
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      font-size: 14px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    /* ─── Scrollbar ────────────────────────────────── */
+    ::-webkit-scrollbar {
+      width: 0;
+      height: 0;
+    }
+
+    /* ─── Animation Classes ────────────────────────── */
+    .fade-in {
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(8px); }
+      to { opacity: 1; transform: translateY(0); }
+    }
+
+    .stagger > * {
+      opacity: 0;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .stagger > *:nth-child(1) { animation-delay: 0.05s; }
+    .stagger > *:nth-child(2) { animation-delay: 0.1s; }
+    .stagger > *:nth-child(3) { animation-delay: 0.15s; }
+    .stagger > *:nth-child(4) { animation-delay: 0.2s; }
+    .stagger > *:nth-child(5) { animation-delay: 0.25s; }
+    .stagger > *:nth-child(6) { animation-delay: 0.3s; }
+
+    /* ─── Selection Info ───────────────────────────── */
+    .selection-summary {
+      background: var(--gray-bg);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      display: flex;
+      flex-wrap: wrap;
+      gap: 12px;
+    }
+
+    .selection-summary .sel-item {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      font-size: 13px;
+    }
+
+    .selection-summary .sel-item .sel-label {
+      color: var(--gray-text);
+    }
+
+    .selection-summary .sel-item .sel-value {
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    /* ─── Install Banner ───────────────────────────── */
+    .install-banner {
+      display: none;
+      margin: 0 24px 0;
+      padding: 16px 18px;
+      background: linear-gradient(135deg, var(--green) 0%, var(--green-light) 100%);
+      border-radius: var(--radius-md);
+      color: var(--white);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .install-banner.show {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      animation: fadeIn 0.4s ease forwards;
+    }
+
+    .install-banner .install-icon {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      background: rgba(255,255,255,0.2);
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .install-banner .install-text {
+      flex: 1;
+    }
+
+    .install-banner .install-title {
+      font-size: 14px;
+      font-weight: 700;
+      margin-bottom: 2px;
+    }
+
+    .install-banner .install-desc {
+      font-size: 12px;
+      opacity: 0.85;
+      line-height: 1.4;
+    }
+
+    .install-banner .install-btn {
+      background: var(--white);
+      color: var(--green);
+      border: none;
+      border-radius: var(--radius-full);
+      padding: 8px 16px;
+      font-size: 13px;
+      font-weight: 700;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition);
+      font-family: inherit;
+    }
+
+    .install-banner .install-btn:active {
+      transform: scale(0.95);
+    }
+
+    .install-banner .install-close {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      width: 24px;
+      height: 24px;
+      background: none;
+      border: none;
+      color: rgba(255,255,255,0.6);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      padding: 0;
+    }
+
+    /* ─── iOS Guide Modal ──────────────────────────── */
+    .ios-guide-steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      margin-top: 8px;
+    }
+
+    .ios-guide-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 14px;
+    }
+
+    .ios-guide-step .step-num {
+      width: 28px;
+      height: 28px;
+      min-width: 28px;
+      background: var(--green);
+      color: var(--white);
+      border-radius: 50%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .ios-guide-step .step-text {
+      font-size: 14px;
+      color: var(--dark);
+      line-height: 1.5;
+      padding-top: 3px;
+    }
+
+    .ios-guide-step .step-text strong {
+      color: var(--green);
+    }
+
+    /* ─── Admin Mode ───────────────────────────────── */
+    .admin-header {
+      background: var(--dark);
+      padding: 16px 24px;
+      position: sticky;
+      top: 0;
+      z-index: 100;
+    }
+
+    .admin-header h1 {
+      color: var(--white);
+      font-size: 22px;
+    }
+
+    .admin-header .subtitle {
+      color: rgba(255,255,255,0.6);
+      font-size: 13px;
+      margin-top: 2px;
+    }
+
+    .admin-header .header-back {
+      color: rgba(255,255,255,0.8);
+    }
+
+    .admin-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      background: var(--dark);
+      color: var(--white);
+      font-size: 11px;
+      font-weight: 700;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      letter-spacing: 0.5px;
+    }
+
+    .admin-stat-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 10px;
+      margin-bottom: 20px;
+    }
+
+    .admin-stat-card {
+      background: var(--gray-bg);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      text-align: center;
+    }
+
+    .admin-stat-card .stat-num {
+      font-size: 28px;
+      font-weight: 800;
+      color: var(--green);
+    }
+
+    .admin-stat-card .stat-label {
+      font-size: 12px;
+      color: var(--gray-text);
+      margin-top: 2px;
+    }
+
+    .admin-actions {
+      display: flex;
+      gap: 8px;
+      margin-bottom: 20px;
+    }
+
+    .admin-actions .btn {
+      flex: 1;
+      font-size: 13px;
+    }
+
+    .admin-reservation-card {
+      background: var(--white);
+      border: 1px solid var(--gray-light);
+      border-radius: var(--radius-md);
+      padding: 16px;
+      margin-bottom: 10px;
+    }
+
+    .admin-reservation-card .admin-card-top {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 10px;
+    }
+
+    .admin-reservation-card .admin-card-meta {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px 16px;
+      font-size: 13px;
+    }
+
+    .admin-reservation-card .admin-card-meta .meta-item {
+      display: flex;
+      gap: 4px;
+    }
+
+    .admin-reservation-card .admin-card-meta .meta-label {
+      color: var(--gray-text);
+    }
+
+    .admin-reservation-card .admin-card-meta .meta-value {
+      color: var(--dark);
+      font-weight: 600;
+    }
+
+    .admin-entry-btn {
+      background: none;
+      border: none;
+      padding: 8px;
+      cursor: pointer;
+      color: var(--gray-mid);
+      transition: var(--transition);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .admin-entry-btn:active {
+      color: var(--dark);
+      transform: scale(0.9);
+    }
+
+    .admin-filter-row {
+      display: flex;
+      gap: 8px;
+      overflow-x: auto;
+      padding-bottom: 4px;
+      margin-bottom: 16px;
+      -webkit-overflow-scrolling: touch;
+    }
+
+    .admin-filter-chip {
+      padding: 8px 16px;
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--gray-light);
+      background: var(--white);
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--gray-text);
+      cursor: pointer;
+      white-space: nowrap;
+      transition: var(--transition);
+      font-family: inherit;
+    }
+
+    .admin-filter-chip:active {
+      transform: scale(0.95);
+    }
+
+    .admin-filter-chip.active {
+      background: var(--dark);
+      border-color: var(--dark);
+      color: var(--white);
+    }
+
+    /* ─── Room Management ──────────────────────────── */
+    .room-card {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      padding: 16px;
+      background: var(--white);
+      border: 1px solid var(--gray-light);
+      border-radius: var(--radius-md);
+      margin-bottom: 10px;
+      transition: var(--transition);
+    }
+
+    .room-card.disabled {
+      opacity: 0.5;
+      background: var(--gray-bg);
+    }
+
+    .room-card .room-icon {
+      width: 44px;
+      height: 44px;
+      min-width: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 16px;
+      font-weight: 800;
+      color: var(--white);
+      background: var(--green);
+    }
+
+    .room-card.disabled .room-icon {
+      background: var(--gray-mid);
+    }
+
+    .room-card .room-info {
+      flex: 1;
+    }
+
+    .room-card .room-name {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .room-card .room-status {
+      font-size: 12px;
+      color: var(--gray-text);
+      margin-top: 2px;
+    }
+
+    .room-card .room-status .active-dot {
+      display: inline-block;
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      margin-right: 4px;
+      vertical-align: middle;
+    }
+
+    .room-card .room-status .active-dot.on {
+      background: var(--green);
+    }
+
+    .room-card .room-status .active-dot.off {
+      background: var(--red);
+    }
+
+    .room-card .room-actions {
+      display: flex;
+      gap: 6px;
+    }
+
+    .room-toggle-btn {
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      border: 1.5px solid var(--gray-light);
+      background: var(--white);
+      font-size: 12px;
+      font-weight: 600;
+      cursor: pointer;
+      transition: var(--transition);
+      font-family: inherit;
+    }
+
+    .room-toggle-btn:active {
+      transform: scale(0.95);
+    }
+
+    .room-toggle-btn.deactivate {
+      color: var(--red);
+      border-color: var(--red);
+    }
+
+    .room-toggle-btn.activate {
+      color: var(--green);
+      border-color: var(--green);
+    }
+
+    .room-delete-btn {
+      width: 32px;
+      height: 32px;
+      border-radius: 50%;
+      border: 1.5px solid var(--gray-light);
+      background: var(--white);
+      color: var(--gray-text);
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: var(--transition);
+    }
+
+    .room-delete-btn:active {
+      transform: scale(0.9);
+      border-color: var(--red);
+      color: var(--red);
+    }
+
+    /* ─── Display Mode (Kiosk) ─────────────────────── */
+    .display-screen {
+      display: none;
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      width: 100vw;
+      height: 100vh;
+      height: 100dvh;
+      background: var(--white);
+      overflow: hidden;
+      z-index: 9000;
+    }
+
+    .display-screen.active {
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* 공통 헤더 */
+    .display-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 18px 32px;
+      background: var(--white);
+      color: var(--dark);
+      border-bottom: 1px solid var(--gray-light);
+      flex-shrink: 0;
+    }
+
+    .display-header .dh-left {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .display-header .dh-floor {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--green);
+    }
+
+    .display-header .dh-name {
+      font-size: 16px;
+      color: var(--gray-text);
+    }
+
+    .display-header .dh-right {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+    }
+
+    .display-header .dh-date {
+      font-size: 17px;
+      color: var(--gray-text);
+    }
+
+    .display-header .dh-clock {
+      font-size: 32px;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      letter-spacing: 1px;
+      color: var(--dark);
+    }
+
+    .dh-fullscreen-btn {
+      background: var(--white);
+      border: 1px solid var(--green);
+      color: var(--green);
+      width: 42px;
+      height: 42px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      transition: background 0.2s, border-color 0.2s;
+      flex-shrink: 0;
+    }
+
+    .dh-fullscreen-btn:active {
+      background: var(--green-bg);
+      border-color: var(--green-light);
+    }
+
+    /* 전체화면 진입 안내 오버레이 */
+    .display-fs-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.7);
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      z-index: 9999;
+      color: #fff;
+      cursor: pointer;
+      gap: 16px;
+      animation: fadeIn 0.3s ease;
+    }
+
+    .display-fs-overlay svg {
+      opacity: 0.8;
+    }
+
+    .display-fs-overlay .fs-text {
+      font-size: 18px;
+      font-weight: 600;
+    }
+
+    .display-fs-overlay .fs-sub {
+      font-size: 13px;
+      opacity: 0.6;
+    }
+
+    /* 메인 영역 (세로: 위아래 / 가로: 좌우) */
+    .display-body {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      overflow: hidden;
+      overflow-x: hidden;
+      max-width: 100vw;
+      padding: 12px;
+      gap: 12px;
+      background: var(--white);
+      box-sizing: border-box;
+    }
+
+    /* ── 좌측/상단: 현재 상태 카드 ── */
+    .display-panel-status {
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      padding: 32px 36px;
+      position: relative;
+      background: var(--gray-bg);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--green);
+      box-shadow: var(--shadow-sm);
+      overflow-y: auto;
+    }
+
+    .dp-state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+      background: var(--gray-bg);
+      border: 1px solid var(--gray-light);
+      color: var(--gray-text);
+    }
+
+    .dp-state-badge.inuse {
+      color: var(--green);
+      background: var(--green-bg);
+      border-color: var(--green-light);
+    }
+
+    .dp-state-badge.available {
+      color: var(--gray-text);
+      background: var(--gray-bg);
+      border-color: var(--gray-light);
+    }
+
+    .dp-state-badge.soon {
+      color: #c17800;
+      background: #fff7e8;
+      border-color: #ffe0ae;
+    }
+
+    .dp-time-range {
+      font-size: 20px;
+      color: var(--gray-text);
+      margin-bottom: 12px;
+      letter-spacing: 0.5px;
+    }
+
+    .dp-state-text {
+      font-size: 52px;
+      font-weight: 800;
+      color: var(--dark);
+      line-height: 1.15;
+    }
+
+    .dp-state-text.inuse {
+      color: var(--green);
+    }
+
+    .dp-state-text.available {
+      color: var(--gray-text);
+    }
+
+    .dp-meeting-info {
+      margin-top: 20px;
+    }
+
+    .dp-meeting-team {
+      font-size: 30px;
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .dp-meeting-user {
+      font-size: 22px;
+      color: var(--gray-text);
+      margin-top: 6px;
+    }
+
+    .dp-meeting-time {
+      font-size: 22px;
+      color: var(--green);
+      font-weight: 600;
+      margin-top: 10px;
+    }
+
+    .dp-next {
+      margin-top: 28px;
+      padding-top: 20px;
+      border-top: 1px solid var(--gray-light);
+      font-size: 22px;
+      color: var(--gray-text);
+      line-height: 1.6;
+    }
+
+    .dp-next strong {
+      color: var(--dark);
+      font-size: 24px;
+    }
+
+    /* QR 코드 영역 */
+    .dp-qr-area {
+      margin-top: 24px;
+      padding-top: 20px;
+      border-top: 1px solid var(--gray-light);
+      display: flex;
+      align-items: center;
+      gap: 16px;
+    }
+
+    .dp-qr-img {
+      width: 80px;
+      height: 80px;
+      border-radius: 10px;
+      flex-shrink: 0;
+      overflow: hidden;
+    }
+
+    .dp-qr-img canvas,
+    .dp-qr-img img {
+      display: block;
+      max-width: 100%;
+      max-height: 100%;
+      image-rendering: pixelated;
+    }
+
+    .dp-qr-text {
+      font-size: 15px;
+      color: var(--gray-text);
+      font-weight: 600;
+      line-height: 1.4;
+    }
+
+    /* ── 우측/하단: 시간표 카드 ── */
+    .display-panel-schedule {
+      flex: 1;
+      min-width: 0;
+      overflow: hidden;
+      padding: 0;
+      background: var(--gray-bg);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--green);
+      box-shadow: var(--shadow-sm);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .ds-timeline-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--gray-light);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--dark);
+    }
+
+    .ds-timeline {
+      flex: 1;
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 14px 14px;
+      scroll-behavior: smooth;
+    }
+
+    .ds-row {
+      display: flex;
+      align-items: stretch;
+      min-height: 48px;
+      border-bottom: 1px solid #f1f1f1;
+    }
+
+    .ds-row.now .ds-row-time {
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .ds-row-time {
+      width: 72px;
+      min-width: 72px;
+      padding: 12px 10px 12px 2px;
+      text-align: right;
+      font-size: 15px;
+      font-weight: 700;
+      color: var(--gray-text);
+      font-variant-numeric: tabular-nums;
+      border-right: 1px solid #f0f0f0;
+      background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.01));
+    }
+
+    .ds-row-content {
+      flex: 1;
+      padding: 4px 10px;
+      display: flex;
+      align-items: stretch;
+    }
+
+    .ds-row.empty .ds-row-content::after {
+      content: '';
+      width: 100%;
+      border-radius: 10px;
+      border: 1px dashed #ececec;
+    }
+
+    .ds-card {
+      width: 100%;
+      border-radius: 12px;
+      background: var(--gray-bg);
+      border: 1px solid var(--green);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 48px;
+    }
+
+    .ds-card.active {
+      background: var(--green-bg);
+      border-color: var(--green-light);
+    }
+
+    .ds-card.past {
+      opacity: 0.45;
+    }
+
+    .ds-card-team {
+      font-size: 16px;
+      font-weight: 700;
+      color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .ds-card-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
+      color: var(--green);
+      background: rgba(0, 98, 65, 0.1);
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+
+    .ds-card-detail {
+      font-size: 13px;
+      color: var(--gray-text);
+      margin-top: 3px;
+      line-height: 1.4;
+    }
+
+    .display-refresh-indicator {
+      text-align: center;
+      padding: 4px;
+      font-size: 10px;
+      color: var(--gray-mid);
+      background: transparent;
+      flex-shrink: 0;
+    }
+
+    /* ═══════════════════════════════════════════════════
+       가로 모드 공통 대응 (일반 화면 + 디스플레이)
+       ═══════════════════════════════════════════════════ */
+    @media (orientation: landscape) {
+
+      /* ── 일반 화면: 가로 시 max-width 확장 + 여백 축소 ── */
+      .app {
+        max-width: 720px;
+      }
+
+      .screen {
+        padding-bottom: 80px;
+      }
+
+      .header {
+        padding: 10px 24px;
+      }
+
+      .header h1 {
+        font-size: 22px;
+      }
+
+      .section {
+        padding: 14px 24px;
+      }
+
+      .section-title {
+        font-size: 16px;
+        margin-bottom: 10px;
+      }
+
+      .floor-grid {
+        grid-template-columns: repeat(4, 1fr);
+      }
+
+      .floor-card {
+        padding: 16px 12px;
+      }
+
+      .bottom-cta {
+        max-width: 720px;
+        padding: 10px 24px;
+        padding-bottom: calc(10px + var(--safe-bottom));
+      }
+
+      /* 달력/시간 그리드 컴팩트화 */
+      .calendar-container {
+        font-size: 13px;
+      }
+
+      .time-grid {
+        grid-template-columns: repeat(6, 1fr);
+      }
+
+      .time-slot {
+        padding: 8px 4px;
+        font-size: 12px;
+      }
+
+      /* 입력 폼 2열 배치 */
+      .input-group label {
+        font-size: 13px;
+      }
+
+      /* 예약 카드 */
+      .reservation-card {
+        padding: 16px;
+        margin-bottom: 8px;
+      }
+
+      /* 탭 바 */
+      .tab-bar {
+        padding: 0 24px;
+      }
+
+      /* 관리자 화면 */
+      .admin-rooms-list .room-card {
+        padding: 14px;
+      }
+
+      /* 모달 */
+      .modal {
+        max-height: 85vh;
+        overflow-y: auto;
+      }
+
+      /* ── 디스플레이: 가로 시 좌우 카드 분할 (현황/타임라인) ── */
+      .display-body {
+        display: grid;
+        grid-template-columns: 55fr 45fr;
+        gap: 14px;
+        padding: 14px;
+        box-sizing: border-box;
+        max-width: 100vw;
+        overflow-x: hidden;
+      }
+
+      .display-panel-status {
+        min-width: 0;
+        padding: 32px 40px;
+      }
+
+      .dp-time-range {
+        font-size: 28px;
+        margin-bottom: 16px;
+      }
+
+      .dp-state-text {
+        font-size: 76px;
+      }
+
+      .dp-meeting-team {
+        font-size: 38px;
+      }
+
+      .dp-meeting-user,
+      .dp-meeting-time {
+        font-size: 26px;
+      }
+
+      .dp-next {
+        font-size: 24px;
+      }
+
+      .display-panel-schedule {
+        min-width: 0;
+        width: auto;
+      }
+
+      .ds-timeline-header {
+        font-size: 22px;
+      }
+
+      .ds-row-time {
+        width: 78px;
+        min-width: 78px;
+        font-size: 18px;
+      }
+
+      .ds-card-team {
+        font-size: 18px;
+      }
+
+      .ds-card-detail {
+        font-size: 15px;
+      }
+
+      .display-refresh-indicator {
+        display: none;
+      }
+
+      .dp-qr-area {
+        margin-top: auto;
+      }
+
+      .dp-qr-img {
+        width: 72px;
+        height: 72px;
+      }
+
+      .dp-qr-text {
+        font-size: 16px;
+      }
+    }
+
+
+    @media (orientation: landscape) and (min-width: 1024px) {
+      .display-body {
+        grid-template-columns: 60fr 40fr;
+      }
+    }
+
+    @media (orientation: landscape) and (min-width: 1600px) {
+      .display-body {
+        grid-template-columns: 65fr 35fr;
+      }
+    }
+
+    /* ═══════════════════════════════════════════════════
+       세로 모드 (Portrait)
+       ═══════════════════════════════════════════════════ */
+    @media (orientation: portrait) {
+      .display-body {
+        flex-direction: column;
+        padding: 10px;
+        gap: 10px;
+      }
+
+      .display-panel-status {
+        flex: 1;
+        min-height: 0;
+        max-height: none;
+        padding: 24px 28px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+      }
+
+      .dp-state-text {
+        font-size: 48px;
+      }
+
+      .dp-meeting-team {
+        font-size: 28px;
+      }
+
+      .dp-meeting-user {
+        font-size: 20px;
+      }
+
+      .dp-meeting-time {
+        font-size: 20px;
+      }
+
+      .dp-next {
+        font-size: 19px;
+        margin-top: 18px;
+        padding-top: 14px;
+      }
+
+      .display-panel-schedule {
+        flex: 1;
+        min-height: 0;
+      }
+
+      .ds-timeline-header {
+        font-size: 18px;
+        padding: 14px 16px 12px;
+      }
+
+      .ds-timeline {
+        padding: 8px 10px 12px;
+      }
+
+      .ds-row-time {
+        width: 68px;
+        min-width: 68px;
+        font-size: 14px;
+      }
+
+      .dp-qr-area {
+        margin-top: 16px;
+        padding-top: 14px;
+        gap: 12px;
+      }
+
+      .dp-qr-img {
+        width: 64px;
+        height: 64px;
+      }
+
+      .dp-qr-text {
+        font-size: 14px;
+      }
+    }
+  
