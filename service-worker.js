@@ -3,11 +3,14 @@
  * 오프라인 캐싱 및 네트워크 전략 관리
  */
 
-const CACHE_NAME = 'jdong-reservation-v5';
+const CACHE_NAME = 'jdong-reservation-v6';
 const STATIC_ASSETS = [
   './',
   './index.html',
-  './manifest.json'
+  './manifest.json',
+  './styles.css',
+  './app.js',
+  './qrcode.min.js'
 ];
 
 // ─── 설치 ───────────────────────────────────────────────
@@ -38,7 +41,10 @@ self.addEventListener('activate', function(event) {
 
 // ─── 요청 가로채기 (네트워크 우선 전략) ──────────────────
 self.addEventListener('fetch', function(event) {
+  if (event.request.method !== 'GET') return;
+
   const url = new URL(event.request.url);
+  if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
   // Google Apps Script API 요청은 항상 네트워크
   if (url.hostname.includes('script.google.com') ||
@@ -62,7 +68,7 @@ self.addEventListener('fetch', function(event) {
         fetch(event.request).then(function(networkResponse) {
           if (networkResponse && networkResponse.status === 200) {
             caches.open(CACHE_NAME).then(function(cache) {
-              cache.put(event.request, networkResponse);
+              cache.put(event.request, networkResponse.clone());
             });
           }
         }).catch(function() {});
