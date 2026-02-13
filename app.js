@@ -984,7 +984,6 @@ function showLoading(show) {
 async function apiGet(action, params) {
   let url = API_URL + '?action=' + encodeURIComponent(action);
   Object.keys(params).forEach(function(key) {
-    if (params[key] !== undefined && params[key] !== null && params[key] !== '') {
       url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
     }
   });
@@ -1564,7 +1563,6 @@ async function adminRefresh() {
       renderAdminStats();
       renderAdminList();
     } else {
-      list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(res.error || '데이터를 불러올 수 없습니다.') + '</p></div>';
     }
   } catch (e) {
     showLoading(false);
