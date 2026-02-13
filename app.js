@@ -116,7 +116,6 @@ document.addEventListener('DOMContentLoaded', function() {
   registerServiceWorker();
 });
 
-
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
 
@@ -1663,6 +1662,8 @@ var adminMode = false;
 var adminAuthToken = '';
 var adminReservations = [];
 var adminCurrentFilter = 'all';
+var adminSecurityAlerts = null;
+
 
 function openAdminAuth() {
   document.getElementById('adminCodeInput').value = '';
@@ -1760,6 +1761,8 @@ async function adminRefresh() {
         return a['시작시간'] < b['시작시간'] ? -1 : 1;
       });
 
+      await loadAdminSecurityAlerts();
+
       renderAdminStats();
       renderAdminList();
     } else {
@@ -1771,18 +1774,44 @@ async function adminRefresh() {
   }
 }
 
+
+async function loadAdminSecurityAlerts() {
+  if (!adminAuthToken) {
+    adminSecurityAlerts = null;
+    return;
+  }
+
+  try {
+    var alertRes = await apiGet('getSecurityAlerts', { adminToken: adminAuthToken });
+    if (alertRes.success) {
+      adminSecurityAlerts = alertRes.data || null;
+    } else {
+      adminSecurityAlerts = null;
+    }
+  } catch (e) {
+    adminSecurityAlerts = null;
+  }
+}
+
 function renderAdminStats() {
   var today = formatDate(new Date());
   var total = adminReservations.length;
   var todayCount = adminReservations.filter(function(r) { return r['날짜'] === today; }).length;
   var upcoming = adminReservations.filter(function(r) { return r['날짜'] >= today; }).length;
   var past = adminReservations.filter(function(r) { return r['날짜'] < today; }).length;
+  var html =
 
-  document.getElementById('adminStats').innerHTML =
     '<div class="admin-stat-card"><div class="stat-num">' + total + '</div><div class="stat-label">전체 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + todayCount + '</div><div class="stat-label">오늘 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + upcoming + '</div><div class="stat-label">예정 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + past + '</div><div class="stat-label">지난 예약</div></div>';
+
+  if (adminSecurityAlerts) {
+    html += '<div class="admin-stat-card"><div class="stat-num">' + Number(adminSecurityAlerts.adminFailCount || 0) + '</div><div class="stat-label">최근 관리자 실패(' + Number(adminSecurityAlerts.windowMinutes || 60) + '분)</div></div>';
+    html += '<div class="admin-stat-card"><div class="stat-num">' + Number(adminSecurityAlerts.reservationFailCount || 0) + '</div><div class="stat-label">최근 예약 인증 실패</div></div>';
+  }
+
+  document.getElementById('adminStats').innerHTML = html;
 }
 
 function adminFilter(el) {
