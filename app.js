@@ -318,6 +318,8 @@ function resetAndGoHome() {
   btn.disabled = true;
   btn.textContent = '층을 선택해주세요';
 
+  setReservationPasswordMode(false);
+
   navigateTo('screenHome');
 }
 
@@ -343,6 +345,7 @@ function startReservation() {
   if (!state.selectedFloor) return;
 
   state.editReservationId = null;
+  state.reservationAuthToken = null;
   state.selectedDate = null;
   state.selectedStartTime = null;
   state.selectedEndTime = null;
@@ -359,10 +362,28 @@ function startReservation() {
   document.getElementById('inputTeam').value = '';
   document.getElementById('inputName').value = '';
   document.getElementById('inputPassword').value = '';
+  setReservationPasswordMode(false);
 
   updateConfirmButton();
   renderCalendar();
   showScreen('screenReserve');
+}
+
+function setReservationPasswordMode(isEditMode) {
+  var passwordGroup = document.getElementById('passwordInputGroup');
+  var editNotice = document.getElementById('editAuthNotice');
+  var inputPassword = document.getElementById('inputPassword');
+
+  if (!passwordGroup || !editNotice || !inputPassword) return;
+
+  if (isEditMode) {
+    passwordGroup.style.display = 'none';
+    editNotice.style.display = 'block';
+    inputPassword.value = '';
+  } else {
+    passwordGroup.style.display = '';
+    editNotice.style.display = 'none';
+  }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -714,7 +735,8 @@ function updateConfirmButton() {
     state.selectedEndTime &&
     team.length > 0 &&
     name.length > 0 &&
-    /^\d{4}$/.test(pw);
+
+    (state.editReservationId ? true : /^\d{4}$/.test(pw));
 
   btn.disabled = !isValid;
   if (state.editReservationId) {
@@ -950,6 +972,7 @@ async function verifyAndEdit(id) {
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = '';
 
+        setReservationPasswordMode(true);
         renderCalendar();
         await loadTimeSlots();
         showFormSection();
@@ -991,6 +1014,7 @@ async function submitUpdate(id) {
     if (res.success) {
       state.reservationAuthToken = null;
       state.editReservationId = null;
+      setReservationPasswordMode(false);
       showToast('예약이 수정되었습니다.', 'success');
       navigateTo('screenMyReservations');
     } else {

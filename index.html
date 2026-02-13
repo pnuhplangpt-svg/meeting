@@ -120,9 +120,13 @@
         <label for="inputName">예약자명</label>
         <input type="text" id="inputName" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off">
       </div>
-      <div class="input-group">
+      <div class="input-group" id="passwordInputGroup">
         <label for="inputPassword">비밀번호 (숫자 4자리)</label>
         <input type="password" id="inputPassword" placeholder="예약 수정/삭제 시 필요합니다" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      </div>
+
+      <div class="edit-auth-notice" id="editAuthNotice" style="display:none;">
+        최초 비밀번호 인증이 완료되었습니다. 수정은 현재 인증으로 진행됩니다.
       </div>
     </div>
 

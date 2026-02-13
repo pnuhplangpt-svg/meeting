@@ -402,6 +402,18 @@
       box-shadow: 0 0 0 3px rgba(0, 98, 65, 0.08);
     }
 
+    .edit-auth-notice {
+      margin-top: -4px;
+      margin-bottom: 16px;
+      padding: 12px 14px;
+      border-radius: var(--radius-sm);
+      background: var(--green-bg);
+      color: var(--green);
+      border: 1px solid var(--green-light);
+      font-size: 13px;
+      line-height: 1.45;
+    }
+
     /* ─── Buttons ──────────────────────────────────── */
     .btn {
       display: inline-flex;

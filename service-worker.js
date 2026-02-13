@@ -56,7 +56,6 @@ self.addEventListener('activate', function(event) {
   );
 });
 
-
 self.addEventListener('message', function(event) {
   if (!event.data) return;
   if (event.data.type === 'SKIP_WAITING') {
