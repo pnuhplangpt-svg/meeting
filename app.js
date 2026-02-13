@@ -113,10 +113,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initNetworkBanner();
   navigateTo('screenHome');
   initInstallBanner();
-
   registerServiceWorker();
 });
-
 
 
 function registerServiceWorker() {
