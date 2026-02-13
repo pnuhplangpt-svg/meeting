@@ -1317,9 +1317,9 @@
     }
 
     .dh-fullscreen-btn {
-      background: var(--gray-bg);
-      border: 1px solid var(--gray-light);
-      color: var(--dark);
+      background: var(--white);
+      border: 1px solid var(--green);
+      color: var(--green);
       width: 42px;
       height: 42px;
       border-radius: 12px;
@@ -1332,8 +1332,8 @@
     }
 
     .dh-fullscreen-btn:active {
-      background: #eaeaea;
-      border-color: var(--gray-mid);
+      background: var(--green-bg);
+      border-color: var(--green-light);
     }
 
     /* 전체화면 진입 안내 오버레이 */
@@ -1374,7 +1374,7 @@
       overflow: hidden;
       padding: 12px;
       gap: 12px;
-      background: var(--gray-bg);
+      background: var(--white);
     }
 
     /* ── 좌측/상단: 현재 상태 카드 ── */
@@ -1384,23 +1384,11 @@
       justify-content: center;
       padding: 32px 36px;
       position: relative;
-      background: var(--white);
+      background: var(--gray-bg);
       border-radius: var(--radius-md);
-      border-left: 6px solid var(--gray-mid);
-      box-shadow: var(--shadow-md);
+      border: 1px solid var(--green);
+      box-shadow: var(--shadow-sm);
       overflow-y: auto;
-    }
-
-    .display-panel-status.state-inuse {
-      border-left-color: var(--red);
-    }
-
-    .display-panel-status.state-available {
-      border-left-color: var(--green);
-    }
-
-    .display-panel-status.state-soon {
-      border-left-color: #f5a623;
     }
 
     .dp-state-badge {
@@ -1533,9 +1521,10 @@
       flex: 1;
       overflow: hidden;
       padding: 0;
-      background: var(--white);
+      background: var(--gray-bg);
       border-radius: var(--radius-md);
-      box-shadow: var(--shadow-md);
+      border: 1px solid var(--green);
+      box-shadow: var(--shadow-sm);
       display: flex;
       flex-direction: column;
     }
@@ -1599,7 +1588,7 @@
       width: 100%;
       border-radius: 12px;
       background: var(--gray-bg);
-      border-left: 5px solid var(--gray-mid);
+      border: 1px solid var(--green);
       padding: 10px 14px;
       display: flex;
       flex-direction: column;
@@ -1609,7 +1598,7 @@
 
     .ds-card.active {
       background: var(--green-bg);
-      border-left-color: var(--green);
+      border-color: var(--green-light);
     }
 
     .ds-card.past {
@@ -1750,7 +1739,6 @@
         width: 55%;
         flex-shrink: 0;
         padding: 32px 40px;
-        border-left: 8px solid var(--gray-mid);
       }
 
       .dp-time-range {
@@ -1835,18 +1823,6 @@
         display: flex;
         flex-direction: column;
         justify-content: center;
-      }
-
-      .display-panel-status.state-inuse {
-        border-left-color: var(--red);
-      }
-
-      .display-panel-status.state-available {
-        border-left-color: var(--green);
-      }
-
-      .display-panel-status.state-soon {
-        border-left-color: #f5a623;
       }
 
       .dp-state-text {
