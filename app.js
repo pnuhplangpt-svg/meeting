@@ -80,7 +80,6 @@ function formatApiError(error, fallbackMessage) {
   return fallback;
 }
 
-
 function initNetworkBanner() {
   var banner = document.getElementById('offlineBanner');
   if (!banner) return;
@@ -93,7 +92,6 @@ function initNetworkBanner() {
   window.addEventListener('online', updateOnlineState);
   window.addEventListener('offline', updateOnlineState);
 }
-
 // ═══════════════════════════════════════════════════════
 // 초기화
 // ═══════════════════════════════════════════════════════
@@ -194,6 +192,7 @@ function bindUiActions() {
     if (action === 'admin-remove-room') return adminRemoveRoom(el.dataset.roomId);
   });
 }
+
 
 // ═══════════════════════════════════════════════════════
 // 회의실 목록 로드 (메인 화면)
@@ -351,6 +350,7 @@ function renderCalendar() {
   const daysInPrevMonth = new Date(year, month, 0).getDate();
 
   let html = '<div class="calendar-nav">';
+
   html += '<button data-action="calendar-prev"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="15 18 9 12 15 6"/></svg></button>';
   html += '<span class="calendar-month">' + year + '년 ' + monthNames[month] + '</span>';
   html += '<button data-action="calendar-next"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="9 18 15 12 9 6"/></svg></button>';

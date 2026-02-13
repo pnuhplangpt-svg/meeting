@@ -572,7 +572,6 @@
       color: var(--gray-text);
       font-size: 15px;
     }
-
     .offline-banner {
       position: sticky;
       top: 0;
@@ -592,7 +591,6 @@
     .offline-banner.show {
       display: block;
     }
-
     /* ─── Toast ────────────────────────────────────── */
     .toast-container {
       position: fixed;
