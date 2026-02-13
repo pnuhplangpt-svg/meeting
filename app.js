@@ -19,7 +19,8 @@ const state = (function createAppState() {
     currentTab: 'all',
     pendingAction: null,
     pendingId: null,
-    reservationAuthToken: null
+    reservationAuthToken: null,
+    editReservationId: null
   };
 
   const api = {};
@@ -80,6 +81,7 @@ function formatApiError(error, fallbackMessage) {
   return fallback;
 }
 
+
 function initNetworkBanner() {
   var banner = document.getElementById('offlineBanner');
   if (!banner) return;
@@ -92,6 +94,8 @@ function initNetworkBanner() {
   window.addEventListener('online', updateOnlineState);
   window.addEventListener('offline', updateOnlineState);
 }
+
+
 // ═══════════════════════════════════════════════════════
 // 초기화
 // ═══════════════════════════════════════════════════════
@@ -145,7 +149,9 @@ function bindUiActions() {
   if (btnStartReserve) btnStartReserve.addEventListener('click', startReservation);
 
   var btnConfirmReserve = byId('btnConfirmReserve');
-  if (btnConfirmReserve) btnConfirmReserve.addEventListener('click', submitReservation);
+
+  if (btnConfirmReserve) btnConfirmReserve.addEventListener('click', handleConfirmReservation);
+
 
   var btnExitAdminMode = byId('btnExitAdminMode');
   if (btnExitAdminMode) btnExitAdminMode.addEventListener('click', exitAdminMode);
@@ -278,6 +284,7 @@ function navigateTo(screenId) {
 
 function resetAndGoHome() {
   state.reservationAuthToken = null;
+  state.editReservationId = null;
   state.selectedFloor = null;
   state.selectedDate = null;
   state.selectedStartTime = null;
@@ -311,6 +318,7 @@ function selectFloor(el) {
 function startReservation() {
   if (!state.selectedFloor) return;
 
+  state.editReservationId = null;
   state.selectedDate = null;
   state.selectedStartTime = null;
   state.selectedEndTime = null;
@@ -507,6 +515,11 @@ async function loadTimeSlots() {
   }
 
   showLoading(false);
+  if (state.editReservationId) {
+    reservedSlots = reservedSlots.filter(function(r) {
+      return String(r['예약ID']) !== String(state.editReservationId);
+    });
+  }
   state.currentReservedSlots = reservedSlots;
   renderTimeGrid(reservedSlots);
   updateConfirmButton();
@@ -640,6 +653,13 @@ function selectTime(time) {
   updateConfirmButton();
 }
 
+function handleConfirmReservation() {
+  if (state.editReservationId) {
+    return submitUpdate(state.editReservationId);
+  }
+  return submitReservation();
+}
+
 function showFormSection() {
   document.getElementById('formDivider').style.display = 'block';
   const section = document.getElementById('formSection');
@@ -674,8 +694,12 @@ function updateConfirmButton() {
     /^\d{4}$/.test(pw);
 
   btn.disabled = !isValid;
-  btn.textContent = isValid ? '예약 완료' : '모든 정보를 입력해주세요';
-}
+
+  if (state.editReservationId) {
+    btn.textContent = isValid ? '예약 수정' : '모든 정보를 입력해주세요';
+  } else {
+    btn.textContent = isValid ? '예약 완료' : '모든 정보를 입력해주세요';
+  }
 
 // 입력 필드 이벤트 리스너
 document.addEventListener('input', function(e) {
@@ -891,6 +915,7 @@ async function verifyAndEdit(id) {
       });
 
       if (reservation) {
+        state.editReservationId = id;
         state.selectedFloor = reservation['층'];
         state.selectedDate = reservation['날짜'];
         state.selectedStartTime = reservation['시작시간'];
@@ -908,10 +933,8 @@ async function verifyAndEdit(id) {
         updateConfirmButton();
         showScreen('screenReserve');
 
-        // 제출 버튼을 수정 모드로 변경
-        const btn = document.getElementById('btnConfirmReserve');
-        btn.textContent = '예약 수정';
-        btn.onclick = function() { submitUpdate(id); };
+        // 제출 버튼 레이블 갱신
+        updateConfirmButton();
       }
     } else {
       state.reservationAuthToken = null;
@@ -944,10 +967,8 @@ async function submitUpdate(id) {
 
     if (res.success) {
       state.reservationAuthToken = null;
+      state.editReservationId = null;
       showToast('예약이 수정되었습니다.', 'success');
-      // 제출 버튼 원래대로
-      const btn = document.getElementById('btnConfirmReserve');
-      btn.onclick = function() { submitReservation(); };
       navigateTo('screenMyReservations');
     } else {
       showToast(res.error || '수정에 실패했습니다.', 'error');
