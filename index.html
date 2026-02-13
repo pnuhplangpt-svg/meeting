@@ -1268,14 +1268,15 @@
       flex-direction: column;
     }
 
-    /* 공통 헤더 (1.5배 확대) */
+    /* 공통 헤더 */
     .display-header {
       display: flex;
       align-items: center;
       justify-content: space-between;
       padding: 18px 32px;
-      background: var(--dark);
-      color: var(--white);
+      background: var(--white);
+      color: var(--dark);
+      border-bottom: 1px solid var(--gray-light);
       flex-shrink: 0;
     }
 
@@ -1288,11 +1289,12 @@
     .display-header .dh-floor {
       font-size: 26px;
       font-weight: 800;
+      color: var(--green);
     }
 
     .display-header .dh-name {
       font-size: 16px;
-      opacity: 0.6;
+      color: var(--gray-text);
     }
 
     .display-header .dh-right {
@@ -1303,7 +1305,7 @@
 
     .display-header .dh-date {
       font-size: 17px;
-      opacity: 0.7;
+      color: var(--gray-text);
     }
 
     .display-header .dh-clock {
@@ -1311,12 +1313,13 @@
       font-weight: 700;
       font-variant-numeric: tabular-nums;
       letter-spacing: 1px;
+      color: var(--dark);
     }
 
     .dh-fullscreen-btn {
-      background: rgba(255,255,255,0.12);
-      border: none;
-      color: var(--white);
+      background: var(--gray-bg);
+      border: 1px solid var(--gray-light);
+      color: var(--dark);
       width: 42px;
       height: 42px;
       border-radius: 12px;
@@ -1324,12 +1327,13 @@
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      transition: background 0.2s;
+      transition: background 0.2s, border-color 0.2s;
       flex-shrink: 0;
     }
 
     .dh-fullscreen-btn:active {
-      background: rgba(255,255,255,0.25);
+      background: #eaeaea;
+      border-color: var(--gray-mid);
     }
 
     /* 전체화면 진입 안내 오버레이 */
@@ -1397,6 +1401,39 @@
 
     .display-panel-status.state-soon {
       border-left-color: #f5a623;
+    }
+
+    .dp-state-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      width: fit-content;
+      font-size: 16px;
+      font-weight: 700;
+      padding: 6px 12px;
+      border-radius: 999px;
+      margin-bottom: 12px;
+      background: var(--gray-bg);
+      border: 1px solid var(--gray-light);
+      color: var(--gray-text);
+    }
+
+    .dp-state-badge.inuse {
+      color: var(--red);
+      background: #fff5f5;
+      border-color: #ffd8d8;
+    }
+
+    .dp-state-badge.available {
+      color: var(--green);
+      background: var(--green-bg);
+      border-color: #cfeadf;
+    }
+
+    .dp-state-badge.soon {
+      color: #c17800;
+      background: #fff7e8;
+      border-color: #ffe0ae;
     }
 
     .dp-time-range {
@@ -1503,86 +1540,108 @@
       flex-direction: column;
     }
 
-    .ds-grid {
-      display: grid;
-      grid-template-columns: auto 1fr;
-      grid-template-rows: repeat(12, 1fr);
+    .ds-timeline-header {
+      padding: 18px 20px 14px;
+      border-bottom: 1px solid var(--gray-light);
+      font-size: 20px;
+      font-weight: 800;
+      color: var(--dark);
+    }
+
+    .ds-timeline {
       flex: 1;
-      overflow: hidden;
-      border-radius: var(--radius-md);
+      overflow-y: auto;
+      overflow-x: hidden;
+      padding: 8px 14px 14px;
+      scroll-behavior: smooth;
     }
 
-    .ds-hline {
-      align-self: start;
-      height: 0;
-      border-top: 1px solid #f0f0f0;
-      pointer-events: none;
-      z-index: 1;
-    }
-
-    .ds-hline.half {
-      border-top-style: dashed;
-      opacity: 0.5;
-    }
-
-    .ds-time-label {
-      grid-column: 1;
+    .ds-row {
       display: flex;
-      align-items: center;
-      justify-content: flex-end;
-      width: 80px;
-      min-width: 80px;
-      padding: 0 14px 0 18px;
-      font-size: 18px;
+      align-items: stretch;
+      min-height: 48px;
+      border-bottom: 1px solid #f1f1f1;
+    }
+
+    .ds-row.now .ds-row-time {
+      color: var(--green);
+      font-weight: 800;
+    }
+
+    .ds-row-time {
+      width: 72px;
+      min-width: 72px;
+      padding: 12px 10px 12px 2px;
+      text-align: right;
+      font-size: 15px;
       font-weight: 700;
       color: var(--gray-text);
       font-variant-numeric: tabular-nums;
-      border-bottom: 1px solid #f0f0f0;
+      border-right: 1px solid #f0f0f0;
+      background: linear-gradient(to right, transparent, rgba(0, 0, 0, 0.01));
     }
 
-    .ds-time-label.last {
-      border-bottom: none;
-    }
-
-    .ds-slot {
-      grid-column: 2;
-      padding: 4px 16px;
+    .ds-row-content {
+      flex: 1;
+      padding: 4px 10px;
       display: flex;
-      align-items: center;
+      align-items: stretch;
     }
 
-    .ds-block {
+    .ds-row.empty .ds-row-content::after {
+      content: '';
       width: 100%;
-      padding: 10px 18px;
+      border-radius: 10px;
+      border: 1px dashed #ececec;
+    }
+
+    .ds-card {
+      width: 100%;
       border-radius: 12px;
       background: var(--gray-bg);
       border-left: 5px solid var(--gray-mid);
+      padding: 10px 14px;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      min-height: 48px;
     }
 
-    .ds-block.active {
+    .ds-card.active {
       background: var(--green-bg);
       border-left-color: var(--green);
     }
 
-    .ds-block.past {
-      opacity: 0.4;
+    .ds-card.past {
+      opacity: 0.45;
     }
 
-    .ds-block-team {
-      font-size: 17px;
+    .ds-card-team {
+      font-size: 16px;
       font-weight: 700;
       color: var(--dark);
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
     }
 
-    .ds-block-user {
-      font-size: 14px;
-      color: var(--gray-text);
-      margin-top: 2px;
-    }
-
-    .ds-time-label.now {
+    .ds-card-badge {
+      display: inline-flex;
+      align-items: center;
+      font-size: 12px;
+      font-weight: 700;
       color: var(--green);
-      font-weight: 800;
+      background: rgba(0, 98, 65, 0.1);
+      border-radius: 999px;
+      padding: 2px 8px;
+    }
+
+    .ds-card-detail {
+      font-size: 13px;
+      color: var(--gray-text);
+      margin-top: 3px;
+      line-height: 1.4;
     }
 
     .display-refresh-indicator {
@@ -1680,7 +1739,7 @@
         overflow-y: auto;
       }
 
-      /* ── 디스플레이: 가로 시 좌우 카드 분할 (현황 60% / 시간표 40%) ── */
+      /* ── 디스플레이: 가로 시 좌우 카드 분할 (현황 55% / 타임라인 45%) ── */
       .display-body {
         flex-direction: row;
         padding: 14px;
@@ -1688,27 +1747,10 @@
       }
 
       .display-panel-status {
-        width: 60%;
+        width: 55%;
         flex-shrink: 0;
         padding: 32px 40px;
         border-left: 8px solid var(--gray-mid);
-        max-height: none;
-        border-right: none;
-        display: flex;
-        flex-direction: column;
-        overflow-y: auto;
-      }
-
-      .display-panel-status.state-inuse {
-        border-left-color: var(--red);
-      }
-
-      .display-panel-status.state-available {
-        border-left-color: var(--green);
-      }
-
-      .display-panel-status.state-soon {
-        border-left-color: #f5a623;
       }
 
       .dp-time-range {
@@ -1717,66 +1759,42 @@
       }
 
       .dp-state-text {
-        font-size: 80px;
-      }
-
-      .dp-meeting-info {
-        margin-top: 24px;
+        font-size: 76px;
       }
 
       .dp-meeting-team {
-        font-size: 40px;
+        font-size: 38px;
       }
 
-      .dp-meeting-user {
-        font-size: 28px;
-        margin-top: 8px;
-      }
-
+      .dp-meeting-user,
       .dp-meeting-time {
-        font-size: 28px;
-        margin-top: 12px;
+        font-size: 26px;
       }
 
       .dp-next {
-        font-size: 26px;
-        margin-top: 32px;
-        padding-top: 24px;
-      }
-
-      .dp-next strong {
-        font-size: 28px;
+        font-size: 24px;
       }
 
       .display-panel-schedule {
-        width: 40%;
+        width: 45%;
         flex: none;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
       }
 
-      .ds-time-label {
-        width: 76px;
-        min-width: 76px;
-        font-size: 20px;
-        font-weight: 700;
-        padding: 0 14px;
+      .ds-timeline-header {
+        font-size: 22px;
       }
 
-      .ds-slot {
-        padding: 4px 14px;
+      .ds-row-time {
+        width: 78px;
+        min-width: 78px;
+        font-size: 18px;
       }
 
-      .ds-block {
-        padding: 10px 16px;
+      .ds-card-team {
+        font-size: 18px;
       }
 
-      .ds-block-team {
-        font-size: 19px;
-      }
-
-      .ds-block-user {
+      .ds-card-detail {
         font-size: 15px;
       }
 
@@ -1786,8 +1804,6 @@
 
       .dp-qr-area {
         margin-top: auto;
-        padding-top: 16px;
-        gap: 14px;
       }
 
       .dp-qr-img {
@@ -1858,9 +1874,21 @@
       .display-panel-schedule {
         flex: 1;
         min-height: 0;
-        overflow: hidden;
-        display: flex;
-        flex-direction: column;
+      }
+
+      .ds-timeline-header {
+        font-size: 18px;
+        padding: 14px 16px 12px;
+      }
+
+      .ds-timeline {
+        padding: 8px 10px 12px;
+      }
+
+      .ds-row-time {
+        width: 68px;
+        min-width: 68px;
+        font-size: 14px;
       }
 
       .dp-qr-area {
@@ -2202,7 +2230,10 @@
 
       <!-- 시간표 패널 -->
       <div class="display-panel-schedule" id="displaySchedule">
-        <!-- 동적 렌더링 -->
+        <div class="ds-timeline-header">오늘 일정</div>
+        <div class="ds-timeline" id="displayTimeline">
+          <!-- 동적 렌더링 -->
+        </div>
       </div>
     </div>
 
@@ -3333,6 +3364,7 @@ function renderDisplayStatus(reservations) {
     container.classList.add('state-inuse');
 
     html +=
+      '<span class="dp-state-badge inuse">● 사용 중</span>' +
       '<div class="dp-time-range">' + current['시작시간'] + ' ~ ' + current['종료시간'] + '</div>' +
       '<div class="dp-state-text inuse">사용 중</div>' +
       '<div class="dp-meeting-info">' +
@@ -3345,16 +3377,15 @@ function renderDisplayStatus(reservations) {
         next['시작시간'] + '</strong> ' + next['팀명'] + '</div>';
     }
   } else if (next) {
-    // 비어 있으나 다음 예약이 있음
     var nowMin = now.getHours() * 60 + now.getMinutes();
     var nextParts = next['시작시간'].split(':');
     var nextMin = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
     var diffMin = nextMin - nowMin;
 
-    // 30분 이내이면 '곧 시작' 상태
     if (diffMin <= 30 && diffMin > 0) {
       container.classList.add('state-soon');
       html +=
+        '<span class="dp-state-badge soon">● 곧 시작</span>' +
         '<div class="dp-state-text" style="color:#f5a623;">곧 시작</div>' +
         '<div class="dp-meeting-info">' +
           '<div class="dp-meeting-team">' + next['팀명'] + '</div>' +
@@ -3373,6 +3404,7 @@ function renderDisplayStatus(reservations) {
       }
 
       html +=
+        '<span class="dp-state-badge available">● 사용 가능</span>' +
         '<div class="dp-state-text available">사용 가능</div>' +
         '<div class="dp-next" style="margin-top:16px;">' +
           '다음 예약: <strong>' + next['시작시간'] + ' ~ ' + next['종료시간'] + '</strong><br>' +
@@ -3382,151 +3414,147 @@ function renderDisplayStatus(reservations) {
   } else {
     container.classList.add('state-available');
     html +=
+      '<span class="dp-state-badge available">● 사용 가능</span>' +
       '<div class="dp-state-text available">사용 가능</div>' +
       '<div class="dp-next" style="margin-top:16px;">오늘 남은 예약이 없습니다</div>';
   }
 
-// QR 코드 영역 추가 (예약 앱 바로가기)
-var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '');
+  // QR 코드 영역 추가 (예약 앱 바로가기)
+  var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '');
 
-html +=
-  '<div class="dp-qr-area">' +
-    '<div id="dpQrCode" class="dp-qr-img"></div>' +
-    '<div class="dp-qr-text">QR 스캔하여 예약하기</div>' +
-  '</div>';
+  html +=
+    '<div class="dp-qr-area">' +
+      '<div id="dpQrCode" class="dp-qr-img"></div>' +
+      '<div class="dp-qr-text">QR 스캔하여 예약하기</div>' +
+    '</div>';
 
-container.innerHTML = html;
+  container.innerHTML = html;
 
-// ✅ QR 생성 (외부 API 호출 없음)
-var qrEl = document.getElementById('dpQrCode');
-if (qrEl && window.QRCode) {
-  qrEl.innerHTML = '';
-  new QRCode(qrEl, {
-    text: qrUrl,
-    width: 200,
-    height: 200,
-    correctLevel: QRCode.CorrectLevel.M
-  });
-} else {
-  // 라이브러리 로딩 실패 시 안내
-  if (qrEl) qrEl.textContent = 'QR 라이브러리를 불러오지 못했습니다.';
+  // ✅ QR 생성 (외부 API 호출 없음)
+  var qrEl = document.getElementById('dpQrCode');
+  if (qrEl && window.QRCode) {
+    qrEl.innerHTML = '';
+    new QRCode(qrEl, {
+      text: qrUrl,
+      width: 200,
+      height: 200,
+      correctLevel: QRCode.CorrectLevel.M
+    });
+  } else {
+    if (qrEl) qrEl.textContent = 'QR 라이브러리를 불러오지 못했습니다.';
+  }
 }
+
+
+function parseTimeToMinutes(timeStr) {
+  if (!timeStr || timeStr.indexOf(':') === -1) return 0;
+  var parts = timeStr.split(':');
+  return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+}
+
+function formatMinutesToTime(min) {
+  var normalized = ((min % 1440) + 1440) % 1440;
+  var h = Math.floor(normalized / 60);
+  var m = normalized % 60;
+  return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+function ceilToHour(min) {
+  return Math.ceil(min / 60) * 60;
+}
+
+function calculateTimelineHeight(durationMin) {
+  var basePerHour = 48;
+  return Math.max(48, Math.round((durationMin / 60) * basePerHour));
+}
+
+function scrollToCurrentTime(container) {
+  if (!container) return;
+  var nowRow = container.querySelector('.ds-row.now');
+  if (!nowRow) return;
+  var target = nowRow.offsetTop - (container.clientHeight * 0.35);
+  container.scrollTop = Math.max(0, target);
 }
 
 function renderDisplaySchedule(reservations) {
-  var container = document.getElementById('displaySchedule');
+  var container = document.getElementById('displayTimeline');
+  if (!container) return;
+
+  var OPEN_MIN = 7 * 60;
+  var CLOSE_MIN = 21 * 60;
+
   var now = new Date();
-  var currentHour = now.getHours();
-  var currentMin = now.getMinutes();
-  var currentTime = String(currentHour).padStart(2, '0') + ':' +
-    String(currentMin).padStart(2, '0');
+  var nowMin = now.getHours() * 60 + now.getMinutes();
 
-  var OPEN_HOUR = 7;
-  var CLOSE_HOUR = 21;
-  var VISIBLE_HOURS = 6;
-
-  // 시작 시각 계산 (1시간 기준, 기존과 동일)
-  var startHour = Math.max(OPEN_HOUR, Math.min(currentHour, CLOSE_HOUR - VISIBLE_HOURS));
-  var endHour = Math.min(CLOSE_HOUR, startHour + VISIBLE_HOURS);
-  var TOTAL_SLOTS = VISIBLE_HOURS * 2; // 12 서브슬롯 (30분 단위)
-  var startMin = startHour * 60;
-  var endMin = endHour * 60;
-
-  // 현재 시각의 서브슬롯 인덱스
-  var nowSlotIdx = -1;
-  if (currentHour >= startHour && currentHour < endHour) {
-    nowSlotIdx = (currentHour - startHour) * 2 + Math.floor(currentMin / 30);
-  }
-
-  // 예약을 그리드 블록으로 변환
-  var blocks = [];
-  var occupied = new Array(TOTAL_SLOTS).fill(false);
-
-  reservations.forEach(function(r) {
-    var sParts = r['시작시간'].split(':');
-    var eParts = r['종료시간'].split(':');
-    var sMin = parseInt(sParts[0]) * 60 + parseInt(sParts[1]);
-    var eMin = parseInt(eParts[0]) * 60 + parseInt(eParts[1]);
-
-    // 표시 범위로 클램프
-    var visStart = Math.max(sMin, startMin);
-    var visEnd = Math.min(eMin, endMin);
-    if (visStart >= visEnd) return;
-
-    var slotStart = Math.floor((visStart - startMin) / 30);
-    var slotEnd = Math.ceil((visEnd - startMin) / 30);
-    var spanCount = slotEnd - slotStart;
-    if (spanCount <= 0) return;
-
-    blocks.push({
-      startIdx: slotStart,
-      spanCount: spanCount,
-      team: r['팀명'],
-      user: r['예약자'],
-      start: r['시작시간'],
-      end: r['종료시간'],
-      isActive: (currentTime >= r['시작시간'] && currentTime < r['종료시간']),
-      isPast: (currentTime >= r['종료시간'])
-    });
-
-    for (var i = slotStart; i < slotEnd; i++) {
-      occupied[i] = true;
-    }
+  var sortedReservations = (reservations || []).slice().sort(function(a, b) {
+    return parseTimeToMinutes(a['시작시간']) - parseTimeToMinutes(b['시작시간']);
   });
 
-  // HTML 생성 (CSS Grid 기반)
-  var html = '<div class="ds-grid">';
+  var html = '';
+  var cursor = OPEN_MIN;
 
-  // 시간 레이블 (1시간 단위, 각 2행 span)
-  for (var h = startHour; h < endHour; h++) {
-    var gridRow = (h - startHour) * 2 + 1;
-    var isNowHour = (h === currentHour);
-    var isLast = (h === endHour - 1);
-    var cls = 'ds-time-label';
-    if (isNowHour) cls += ' now';
-    if (isLast) cls += ' last';
-    html += '<div class="' + cls + '" style="grid-row:' + gridRow + '/span 2">' +
-      String(h).padStart(2, '0') + ':00</div>';
-  }
+  for (var i = 0; i < sortedReservations.length; i++) {
+    var r = sortedReservations[i];
+    var rawStart = parseTimeToMinutes(r['시작시간']);
+    var rawEnd = parseTimeToMinutes(r['종료시간']);
 
-  // 예약 블록 (column 2, 가변 span)
-  blocks.forEach(function(b) {
-    var gridRow = b.startIdx + 1;
-    var blockCls = 'ds-block';
-    if (b.isActive) blockCls += ' active';
-    else if (b.isPast) blockCls += ' past';
+    var startMin = Math.max(OPEN_MIN, Math.min(CLOSE_MIN, rawStart));
+    var endMin = Math.max(OPEN_MIN, Math.min(CLOSE_MIN, rawEnd));
 
-    var statusTag = b.isActive
-      ? ' <span style="color:var(--green);">● 진행 중</span>'
-      : '';
+    if (endMin <= startMin) continue;
 
-    html += '<div class="ds-slot" style="grid-row:' + gridRow + '/span ' + b.spanCount + ';grid-column:2">' +
-      '<div class="' + blockCls + '">' +
-        '<div class="ds-block-team">' + b.team + statusTag + '</div>' +
-        '<div class="ds-block-user">' + b.user + ' · ' + b.start + ' ~ ' + b.end + '</div>' +
-      '</div></div>';
-  });
-
-  // 빈 슬롯 (column 2)
-  for (var i = 0; i < TOTAL_SLOTS; i++) {
-    if (!occupied[i]) {
-      html += '<div class="ds-slot ds-empty" style="grid-row:' + (i + 1) + '/span 1;grid-column:2"></div>';
+    while (cursor < startMin) {
+      var emptyEnd = Math.min(startMin, ceilToHour(cursor));
+      if (emptyEnd <= cursor) emptyEnd = Math.min(startMin, cursor + 60);
+      var emptyNow = nowMin >= cursor && nowMin < emptyEnd;
+      html += '<div class="ds-row empty' + (emptyNow ? ' now' : '') + '" style="min-height:' +
+        calculateTimelineHeight(emptyEnd - cursor) + 'px">' +
+          '<div class="ds-row-time">' + formatMinutesToTime(cursor) + '</div>' +
+          '<div class="ds-row-content"></div>' +
+        '</div>';
+      cursor = emptyEnd;
     }
+
+    var isNow = nowMin >= startMin && nowMin < endMin;
+    var isPast = nowMin >= endMin;
+    var cardClass = 'ds-card';
+    if (isNow) cardClass += ' active';
+    else if (isPast) cardClass += ' past';
+
+    html += '<div class="ds-row' + (isNow ? ' now' : '') + '" style="min-height:' +
+      calculateTimelineHeight(endMin - startMin) + 'px">' +
+        '<div class="ds-row-time">' + formatMinutesToTime(startMin) + '</div>' +
+        '<div class="ds-row-content">' +
+          '<div class="' + cardClass + '">' +
+            '<div class="ds-card-team">' +
+              r['팀명'] +
+              (isNow ? '<span class="ds-card-badge">진행 중</span>' : '') +
+            '</div>' +
+            '<div class="ds-card-detail">' +
+              r['예약자'] + ' · ' + formatMinutesToTime(startMin) + ' ~ ' + formatMinutesToTime(endMin) +
+            '</div>' +
+          '</div>' +
+        '</div>' +
+      '</div>';
+
+    cursor = endMin;
   }
 
-  // 구분선 (시간 경계 = 실선, 30분 경계 = 점선)
-  for (var i = 1; i < TOTAL_SLOTS; i++) {
-    var isHourBoundary = (i % 2 === 0);
-    if (isHourBoundary) {
-      html += '<div class="ds-hline" style="grid-row:' + (i + 1) + ';grid-column:1/-1"></div>';
-    } else {
-      html += '<div class="ds-hline half" style="grid-row:' + (i + 1) + ';grid-column:2"></div>';
-    }
+  while (cursor < CLOSE_MIN) {
+    var nextHour = Math.min(CLOSE_MIN, cursor + 60);
+    var tailNow = nowMin >= cursor && nowMin < nextHour;
+    html += '<div class="ds-row empty' + (tailNow ? ' now' : '') + '" style="min-height:' +
+      calculateTimelineHeight(nextHour - cursor) + 'px">' +
+        '<div class="ds-row-time">' + formatMinutesToTime(cursor) + '</div>' +
+        '<div class="ds-row-content"></div>' +
+      '</div>';
+    cursor = nextHour;
   }
 
-  html += '</div>';
   container.innerHTML = html;
+  scrollToCurrentTime(container);
 }
+
 
 // 화면 꺼짐 방지 (Wake Lock API)
 async function requestWakeLock() {
