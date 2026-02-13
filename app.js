@@ -59,7 +59,6 @@ function escapeJsSingleQuote(value) {
     .split('\n').join('\\n')
     .split('\r').join('\\r');
 }
-
 // ═══════════════════════════════════════════════════════
 // 초기화
 // ═══════════════════════════════════════════════════════
@@ -610,7 +609,6 @@ async function submitReservation() {
     }
   } catch (e) {
     showLoading(false);
-    showToast('서버 연결에 실패했습니다.', 'error');
   }
 }
 
@@ -656,7 +654,6 @@ async function loadReservations() {
       list.innerHTML = '<div class="empty-state"><p>데이터를 불러올 수 없습니다.</p></div>';
     }
   } catch (e) {
-    list.innerHTML = '<div class="empty-state"><p>서버에 연결할 수 없습니다.</p></div>';
   }
 }
 
@@ -818,7 +815,6 @@ async function verifyAndEdit(id) {
   } catch (e) {
     state.reservationAuthToken = null;
     showLoading(false);
-    showToast('서버 연결에 실패했습니다.', 'error');
   }
 }
 
@@ -852,7 +848,6 @@ async function submitUpdate(id) {
     }
   } catch (e) {
     showLoading(false);
-    showToast('서버 연결에 실패했습니다.', 'error');
   }
 }
 
@@ -909,12 +904,10 @@ async function verifyAndDelete(id) {
         }
       } catch (e) {
         showLoading(false);
-        showToast('서버 연결에 실패했습니다.', 'error');
       }
     };
   } catch (e) {
     showLoading(false);
-    showToast('서버 연결에 실패했습니다.', 'error');
   }
 }
 
@@ -983,9 +976,6 @@ function showLoading(show) {
 // ═══════════════════════════════════════════════════════
 async function apiGet(action, params) {
   let url = API_URL + '?action=' + encodeURIComponent(action);
-
-  Object.keys(params).forEach(function(key) {
-      url += '&' + encodeURIComponent(key) + '=' + encodeURIComponent(params[key]);
   });
 
   const response = await fetch(url, { redirect: 'follow' });
@@ -999,7 +989,6 @@ async function apiGet(action, params) {
   } catch (e) {
     throw new Error('JSON parse error (' + action + ')');
   }
-
   return payload;
 }
 
@@ -1504,7 +1493,6 @@ async function verifyAdminCode() {
   } catch (e) {
     adminAuthToken = '';
     showLoading(false);
-    showToast('서버 연결에 실패했습니다.', 'error');
   }
 }
 
@@ -1564,10 +1552,6 @@ async function adminRefresh() {
       renderAdminStats();
       renderAdminList();
     } else {
-    }
-  } catch (e) {
-    showLoading(false);
-    list.innerHTML = '<div class="empty-state"><p>서버에 연결할 수 없습니다.</p></div>';
   }
 }
 
@@ -1693,7 +1677,6 @@ function adminDeleteOne(id) {
       }
     } catch (e) {
       showLoading(false);
-      showToast('서버 연결에 실패했습니다.', 'error');
     }
   };
 }
@@ -1773,7 +1756,6 @@ async function loadAdminRooms() {
       list.innerHTML = '<div class="empty-state"><p>데이터를 불러올 수 없습니다.</p></div>';
     }
   } catch (e) {
-    list.innerHTML = '<div class="empty-state"><p>서버 연결에 실패했습니다.</p></div>';
   }
 }
 
@@ -1833,7 +1815,6 @@ async function adminToggleRoom(roomId, active) {
     }
   } catch (e) {
     showLoading(false);
-    showToast('서버 연결에 실패했습니다.', 'error');
   }
 }
 
@@ -1868,7 +1849,6 @@ async function adminAddRoom() {
     }
   } catch (e) {
     showLoading(false);
-    showToast('서버 연결에 실패했습니다.', 'error');
   }
 }
 
@@ -1899,7 +1879,6 @@ function adminRemoveRoom(roomId) {
       }
     } catch (e) {
       showLoading(false);
-      showToast('서버 연결에 실패했습니다.', 'error');
     }
   };
 }
