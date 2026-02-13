@@ -113,11 +113,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initNetworkBanner();
   navigateTo('screenHome');
   initInstallBanner();
-
   registerServiceWorker();
 });
-
-
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -737,6 +734,7 @@ function updateConfirmButton() {
     state.selectedEndTime &&
     team.length > 0 &&
     name.length > 0 &&
+
     (state.editReservationId ? true : /^\d{4}$/.test(pw));
 
   btn.disabled = !isValid;
@@ -972,8 +970,8 @@ async function verifyAndEdit(id) {
         document.getElementById('inputTeam').value = reservation['팀명'];
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = '';
-        setReservationPasswordMode(true);
 
+        setReservationPasswordMode(true);
         renderCalendar();
         await loadTimeSlots();
         showFormSection();
@@ -1666,6 +1664,7 @@ var adminReservations = [];
 var adminCurrentFilter = 'all';
 var adminSecurityAlerts = null;
 
+
 function openAdminAuth() {
   document.getElementById('adminCodeInput').value = '';
   openModal('modalAdminAuth');
@@ -1763,6 +1762,7 @@ async function adminRefresh() {
       });
 
       await loadAdminSecurityAlerts();
+
       renderAdminStats();
       renderAdminList();
     } else {
@@ -1773,7 +1773,6 @@ async function adminRefresh() {
     list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(formatApiError(e, '서버에 연결할 수 없습니다.')) + '</p></div>';
   }
 }
-
 
 
 async function loadAdminSecurityAlerts() {
@@ -1800,8 +1799,8 @@ function renderAdminStats() {
   var todayCount = adminReservations.filter(function(r) { return r['날짜'] === today; }).length;
   var upcoming = adminReservations.filter(function(r) { return r['날짜'] >= today; }).length;
   var past = adminReservations.filter(function(r) { return r['날짜'] < today; }).length;
-
   var html =
+
     '<div class="admin-stat-card"><div class="stat-num">' + total + '</div><div class="stat-label">전체 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + todayCount + '</div><div class="stat-label">오늘 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + upcoming + '</div><div class="stat-label">예정 예약</div></div>' +

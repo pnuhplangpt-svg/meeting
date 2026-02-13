@@ -22,3 +22,4 @@ The test uses an in-page mocked API (`fetch` override), so it is deterministic a
 - See `OPERATIONS_ROADMAP.md` for a phased hardening/operations plan (1-week / 2-week / 4-week).
 - Start execution with `DEPLOY_CHECKLIST.md` (Priority 1 deployment checklist).
 - For secrets/process control, follow `SECRETS_RUNBOOK.md` (Priority 1-2).
+

@@ -6,7 +6,9 @@
 // ─── 설정 ───────────────────────────────────────────────
 const SHEET_NAME = '예약';
 const ROOM_SHEET_NAME = '회의실';
+
 const AUDIT_SHEET_NAME = 'Audit';
+
 const LEGACY_ADMIN_CODE = '041082'; // 마이그레이션용 fallback (운영 시 Script Property 사용 권장)
 
 const RESERVATION_TOKEN_TTL_SECONDS = 60 * 10; // 10분
@@ -19,6 +21,7 @@ const AUTH_LOCK_SECONDS = 60 * 15; // 15분
 
 const PROP_ADMIN_CODE = 'ADMIN_CODE';
 const PROP_PASSWORD_PEPPER = 'PASSWORD_PEPPER';
+
 const ALERT_WINDOW_MINUTES = 60;
 
 // ─── 유틸리티 ───────────────────────────────────────────
@@ -36,8 +39,6 @@ function getSheet() {
   }
   return sheet;
 }
-
-
 
 function getAuditSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -242,7 +243,6 @@ function hashPassword(password) {
 }
 
 // ─── GET 요청 핸들러 ────────────────────────────────────
-
 
 function getSecurityAlerts(params) {
   const adminToken = params && params.adminToken ? params.adminToken : '';
@@ -459,6 +459,7 @@ function createReservation(body) {
   sheet.appendRow([id, date, floor, startTime, endTime, teamName, userName, passwordHash, createdAt]);
 
   writeAudit('createReservation', 'success', 'user', id, date + ' ' + floor + ' ' + startTime + '~' + endTime);
+
   return jsonResponse({
     success: true,
     data: {
@@ -528,18 +529,22 @@ function verifyPassword(body) {
       if (storedHash !== inputHash) {
         recordAuthFailure('reservation', id);
         writeAudit('verifyPassword', 'fail', 'user', id, 'password mismatch');
+        
         return jsonResponse({ success: false, error: '비밀번호가 일치하지 않습니다.' });
       }
 
       clearAuthFailure('reservation', id);
       const token = issueReservationToken(id);
       writeAudit('verifyPassword', 'success', 'user', id, '');
+
       return jsonResponse({ success: true, token: token, message: '인증 성공' });
     }
   }
 
   recordAuthFailure('reservation', id);
+
   writeAudit('verifyPassword', 'fail', 'user', id, 'reservation not found');
+
   return jsonResponse({ success: false, error: '예약을 찾을 수 없습니다.' });
 }
 
@@ -587,7 +592,9 @@ function updateReservation(body) {
 
       // 민감 작업 완료 후 토큰 폐기(재사용 방지)
       deleteToken(token);
+
       writeAudit('updateReservation', 'success', 'user', id, newDate + ' ' + newFloor + ' ' + newStart + '~' + newEnd);
+
       return jsonResponse({ success: true, message: '예약이 수정되었습니다.' });
     }
   }
@@ -637,7 +644,9 @@ function deleteReservation(body) {
       if (usedReservationToken) {
         deleteToken(token);
       }
+
       writeAudit('deleteReservation', 'success', usedReservationToken ? 'user' : 'admin', id, '');
+
       return jsonResponse({ success: true, message: '예약이 삭제되었습니다.' });
     }
   }
@@ -663,12 +672,16 @@ function verifyAdmin(params) {
   if (code === adminCode) {
     clearAuthFailure('admin', 'global');
     const token = issueAdminToken();
+
     writeAudit('verifyAdmin', 'success', 'admin', 'global', '');
+
     return jsonResponse({ success: true, token: token, message: '관리자 인증 성공' });
   }
 
   recordAuthFailure('admin', 'global');
+
   writeAudit('verifyAdmin', 'fail', 'admin', 'global', 'code mismatch');
+
   return jsonResponse({ success: false, error: '관리자 인증에 실패했습니다.' });
 }
 
@@ -714,7 +727,9 @@ function addRoom(body) {
   }
 
   sheet.appendRow([floor, floor, name, 'TRUE']);
+
   writeAudit('addRoom', 'success', 'admin', floor, name);
+
   return jsonResponse({ success: true, message: '회의실이 추가되었습니다.' });
 }
 
@@ -743,7 +758,9 @@ function updateRoom(body) {
       if (active !== undefined) {
         sheet.getRange(rowIndex, 4).setValue(active ? 'TRUE' : 'FALSE');
       }
+
       writeAudit('updateRoom', 'success', 'admin', roomId, (name !== undefined ? String(name) : '') + ' active=' + String(active));
+
       return jsonResponse({ success: true, message: '회의실이 수정되었습니다.' });
     }
   }
@@ -770,7 +787,9 @@ function deleteRoom(body) {
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][0]) === String(roomId)) {
       sheet.deleteRow(i + 2);
+
       writeAudit('deleteRoom', 'success', 'admin', roomId, '');
+
       return jsonResponse({ success: true, message: '회의실이 삭제되었습니다.' });
     }
   }
@@ -783,5 +802,6 @@ function initializeSheet() {
   getSheet();
   getRoomSheet();
   getAuditSheet();
+
   Logger.log('시트가 초기화되었습니다.');
 }
