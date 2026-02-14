@@ -1,3 +1,13 @@
+function buildUpstreamPostBody(body) {
+  if (typeof body === 'string') {
+    return body;
+  }
+  if (body == null) {
+    return '{}';
+  }
+  return JSON.stringify(body);
+}
+
 export default async function handler(req, res) {
   const upstream = process.env.APPS_SCRIPT_URL;
 
@@ -20,10 +30,10 @@ export default async function handler(req, res) {
     const target = new URL(upstream);
 
     if (req.method === 'GET') {
-      Object.keys(req.query || {}).forEach(function (key) {
+      Object.keys(req.query || {}).forEach(function(key) {
         const value = req.query[key];
         if (Array.isArray(value)) {
-          value.forEach(function (item) {
+          value.forEach(function(item) {
             target.searchParams.append(key, String(item));
           });
           return;
@@ -37,10 +47,10 @@ export default async function handler(req, res) {
     const upstreamResponse = await fetch(target.toString(), {
       method: req.method,
       headers: req.method === 'POST'
-        ? { 'Content-Type': 'text/plain' }
+        ? { 'Content-Type': 'text/plain; charset=utf-8' }
         : undefined,
       body: req.method === 'POST'
-        ? JSON.stringify(req.body || {})
+        ? buildUpstreamPostBody(req.body)
         : undefined
     });
 
