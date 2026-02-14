@@ -56,6 +56,10 @@ function isSupabaseWriteEnabled() {
   return String(process.env.SUPABASE_WRITE_ENABLED || '').toLowerCase() === 'true';
 }
 
+function isStrictPasswordHashEnabled() {
+  return String(process.env.SUPABASE_STRICT_PASSWORD_HASH || '').toLowerCase() === 'true';
+}
+
 function getSupabaseConfig() {
   return {
     url: String(process.env.SUPABASE_URL || '').replace(/\/$/, ''),
@@ -531,6 +535,8 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
     const inputHash = hashPassword(password);
     if (!isPlaceholderHash(row.password_hash)) {
       matched = String(row.password_hash || '') === inputHash;
+    } else if (isStrictPasswordHashEnabled()) {
+      return { handled: true, status: 200, body: { success: false, error: '비밀번호 마이그레이션이 완료되지 않은 예약입니다. 관리자에게 문의해주세요.' } };
     } else {
       const upstreamResult = await verifyPasswordViaUpstream(upstream, sharedSecret, id, password);
       matched = upstreamResult.ok;

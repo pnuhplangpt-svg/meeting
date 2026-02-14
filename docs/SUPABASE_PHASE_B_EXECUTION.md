@@ -122,3 +122,34 @@ order by floor;
 - `SUPABASE_WRITE_ENABLED=false`
 - `SUPABASE_READ_ENABLED=false` (필요 시)
 
+
+
+---
+
+## 7. Phase D(완전 컷오버)
+
+### 7-1. 비밀번호 해시 백필
+
+```bash
+export APPS_SCRIPT_URL='https://script.google.com/macros/s/REPLACE_ME/exec'
+export ADMIN_TOKEN='YOUR_ADMIN_TOKEN'
+export PROXY_SHARED_SECRET='YOUR_SHARED_SECRET'
+export SUPABASE_URL='https://YOUR_PROJECT.supabase.co'
+export SUPABASE_SERVICE_ROLE_KEY='YOUR_SERVICE_ROLE_KEY'
+python3 scripts/backfill_password_hashes_to_supabase.py
+```
+
+### 7-2. Strict 모드 활성화
+
+Vercel env:
+- `SUPABASE_STRICT_PASSWORD_HASH=true`
+
+의미:
+- placeholder 해시 예약은 Apps Script fallback 없이 차단
+- 즉, Supabase-only 비밀번호 검증 경로 강제
+
+### 7-3. 최종 검증
+
+- [ ] 신규 예약 생성/수정/취소 정상
+- [ ] 기존 예약 비밀번호 인증 정상
+- [ ] Apps Script 직접 의존 없는지 운영 로그 확인

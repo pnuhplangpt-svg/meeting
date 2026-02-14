@@ -65,6 +65,7 @@ Required Vercel environment variables:
 - `SUPABASE_WRITE_ENABLED`: `true`일 때 예약 생성/인증/수정/취소를 Supabase로 처리
 - `PROXY_PASSWORD_PEPPER`: Apps Script `PASSWORD_PEPPER`와 동일 값 (비밀번호 해시 호환)
 - `PROXY_TOKEN_SECRET`: 프록시 예약 토큰 서명용 비밀키
+- `SUPABASE_STRICT_PASSWORD_HASH`: `true`면 placeholder 해시 예약을 Apps Script로 fallback하지 않고 차단
 
 Example (local dev):
 
@@ -131,3 +132,19 @@ python scripts/run_mock_e2e.py
   - `python -m playwright install firefox` 재실행
 - 회사망/프록시 환경:
   - 브라우저 다운로드가 차단될 수 있으니 네트워크 예외 필요
+
+
+## Phase D: password hash backfill (cutover)
+
+Before full Supabase-only auth cutover, backfill `reservations.password_hash` from Apps Script:
+
+```bash
+export APPS_SCRIPT_URL='https://script.google.com/macros/s/REPLACE_ME/exec'
+export ADMIN_TOKEN='YOUR_ADMIN_TOKEN'
+export PROXY_SHARED_SECRET='YOUR_SHARED_SECRET'
+export SUPABASE_URL='https://YOUR_PROJECT.supabase.co'
+export SUPABASE_SERVICE_ROLE_KEY='YOUR_SERVICE_ROLE_KEY'
+python3 scripts/backfill_password_hashes_to_supabase.py
+```
+
+After successful backfill, set `SUPABASE_STRICT_PASSWORD_HASH=true` in Vercel.

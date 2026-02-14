@@ -823,6 +823,8 @@ function doGet(e) {
         return getOperationalMetricsReport(params);
       case 'getOperationalMetricsTrend':
         return getOperationalMetricsTrend(params);
+      case 'exportReservationHashes':
+        return exportReservationHashes(params);
       default:
         return jsonResponse({ success: false, error: '알 수 없는 액션입니다.' });
     }
@@ -872,6 +874,34 @@ function doPost(e) {
   } catch (err) {
     return jsonResponse({ success: false, error: '서버 처리 중 오류가 발생했습니다.' });
   }
+}
+
+
+// ─── 예약 비밀번호 해시 내보내기 (adminToken 인증) ───────────
+function exportReservationHashes(params) {
+  const adminToken = params && params.adminToken ? params.adminToken : '';
+  const adminCheck = verifyAdminToken(adminToken);
+  if (!adminCheck.ok) {
+    return jsonResponse({ success: false, error: '관리자 권한이 필요합니다.' });
+  }
+
+  const sheet = getSheet();
+  const data = sheet.getDataRange().getValues();
+  const rows = data.slice(1);
+
+  const output = rows
+    .map(function(row) {
+      return {
+        reservationId: String(row[0] || ''),
+        passwordHash: String(row[7] || '')
+      };
+    })
+    .filter(function(item) {
+      return item.reservationId && item.passwordHash;
+    });
+
+  writeAudit('exportReservationHashes', 'success', 'admin', 'global', 'count=' + output.length);
+  return jsonResponse({ success: true, data: output });
 }
 
 // ─── 예약 조회 ──────────────────────────────────────────
