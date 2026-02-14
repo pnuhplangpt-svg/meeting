@@ -53,19 +53,23 @@ Operational metrics now support report preview/send for admins.
 
 To hide direct Apps Script endpoint usage from the browser, the frontend now calls `/api/proxy` and Vercel forwards requests to Apps Script server-side.
 
-Required Vercel environment variable:
+Required Vercel environment variables:
 
 - `APPS_SCRIPT_URL`: deployed Google Apps Script Web App URL (`.../exec`)
+- `PROXY_SHARED_SECRET`: long random secret shared with Apps Script Script Property `PROXY_SHARED_SECRET`
 
 Example (local dev):
 
 ```bash
 vercel env add APPS_SCRIPT_URL
+vercel env add PROXY_SHARED_SECRET
 ```
 
 Phase 2 hardening now included in `api/proxy`:
 - GET/POST action allowlist enforcement
+- action-specific required parameter/field checks
 - per-IP+method basic rate limiting (60 req/min, best-effort in serverless runtime)
+- optional shared-secret forwarding to Apps Script (`proxySecret`)
 
 ## Playwright 환경 빠른 구축 (로컬 PC)
 

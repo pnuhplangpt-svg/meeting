@@ -21,6 +21,7 @@ const PROP_PASSWORD_PEPPER = 'PASSWORD_PEPPER';
 const PROP_METRICS_REPORT_RECIPIENTS = 'METRICS_REPORT_RECIPIENTS';
 const PROP_METRICS_REPORT_THRESHOLD_ADMIN_FAIL = 'METRICS_REPORT_THRESHOLD_ADMIN_FAIL';
 const PROP_METRICS_REPORT_THRESHOLD_PASSWORD_FAIL = 'METRICS_REPORT_THRESHOLD_PASSWORD_FAIL';
+const PROP_PROXY_SHARED_SECRET = 'PROXY_SHARED_SECRET';
 const ALERT_WINDOW_MINUTES = 60;
 const RESERVATION_LOCK_WAIT_MS = 5000;
 
@@ -111,6 +112,21 @@ function getAdminCode() {
 
 function getPasswordPepper() {
   return (getScriptProperties().getProperty(PROP_PASSWORD_PEPPER) || '').trim();
+}
+
+function getProxySharedSecret() {
+  return (getScriptProperties().getProperty(PROP_PROXY_SHARED_SECRET) || '').trim();
+}
+
+function verifyProxySharedSecret(secret) {
+  const configured = getProxySharedSecret();
+  if (!configured) {
+    return { ok: true };
+  }
+  if (String(secret || '').trim() !== configured) {
+    return { ok: false, error: '허용되지 않은 호출입니다.' };
+  }
+  return { ok: true };
 }
 
 function getCache() {
@@ -780,6 +796,12 @@ function runScheduledOperationalMetricsReport() {
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
   const action = params.action || 'getReservations';
+  const proxyGate = verifyProxySharedSecret(params.proxySecret || '');
+
+  if (!proxyGate.ok) {
+    writeAudit('proxyGate', 'deny', 'system', action, proxyGate.error);
+    return jsonResponse({ success: false, error: proxyGate.error });
+  }
 
   try {
     switch (action) {
@@ -819,6 +841,12 @@ function doPost(e) {
   }
 
   const action = body.action || '';
+  const proxyGate = verifyProxySharedSecret(body.proxySecret || '');
+
+  if (!proxyGate.ok) {
+    writeAudit('proxyGate', 'deny', 'system', action, proxyGate.error);
+    return jsonResponse({ success: false, error: proxyGate.error });
+  }
 
   try {
     switch (action) {

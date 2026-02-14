@@ -21,6 +21,27 @@ const POST_ACTION_ALLOWLIST = new Set([
   'sendOperationalMetricsReport'
 ]);
 
+const GET_ACTION_REQUIRED_PARAMS = {
+  getReservationById: ['id'],
+  verifyAdmin: ['code'],
+  getSecurityAlerts: ['adminToken'],
+  getOperationalChecks: ['adminToken'],
+  getOperationalMetrics: ['adminToken'],
+  getOperationalMetricsReport: ['adminToken'],
+  getOperationalMetricsTrend: ['adminToken']
+};
+
+const POST_ACTION_REQUIRED_FIELDS = {
+  createReservation: ['date', 'floor', 'startTime', 'endTime', 'teamName', 'userName', 'password'],
+  updateReservation: ['id', 'token'],
+  deleteReservation: ['id'],
+  verifyPassword: ['id', 'password'],
+  addRoom: ['adminToken', 'floor', 'name'],
+  updateRoom: ['adminToken', 'id'],
+  deleteRoom: ['adminToken', 'id'],
+  sendOperationalMetricsReport: ['adminToken']
+};
+
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 60;
 
@@ -83,23 +104,51 @@ function parseIncomingPostBody(body) {
   return null;
 }
 
+function isNonEmptyValue(value) {
+  return value !== undefined && value !== null && String(value).trim() !== '';
+}
+
+function ensureRequiredValues(container, requiredFields) {
+  for (let i = 0; i < requiredFields.length; i++) {
+    const key = requiredFields[i];
+    if (!isNonEmptyValue(container[key])) {
+      return key;
+    }
+  }
+  return '';
+}
+
 function ensureGetActionPolicy(action, query) {
   if (!GET_ACTION_ALLOWLIST.has(action)) {
     return { ok: false, status: 400, error: '허용되지 않은 GET 액션입니다.' };
   }
 
+  const required = GET_ACTION_REQUIRED_PARAMS[action] || [];
+  const missingKey = ensureRequiredValues(query || {}, required);
+  if (missingKey) {
+    return { ok: false, status: 400, error: 'GET 요청 파라미터가 누락되었습니다: ' + missingKey };
+  }
+
   return { ok: true };
 }
 
-function ensurePostActionPolicy(action) {
+function ensurePostActionPolicy(action, body) {
   if (!POST_ACTION_ALLOWLIST.has(action)) {
     return { ok: false, status: 400, error: '허용되지 않은 POST 액션입니다.' };
   }
+
+  const required = POST_ACTION_REQUIRED_FIELDS[action] || [];
+  const missingKey = ensureRequiredValues(body || {}, required);
+  if (missingKey) {
+    return { ok: false, status: 400, error: 'POST 요청 필드가 누락되었습니다: ' + missingKey };
+  }
+
   return { ok: true };
 }
 
 export default async function handler(req, res) {
   const upstream = process.env.APPS_SCRIPT_URL;
+  const sharedSecret = (process.env.PROXY_SHARED_SECRET || '').trim();
 
   if (!upstream) {
     return res.status(500).json({ success: false, error: 'Server misconfiguration: APPS_SCRIPT_URL is not set.' });
@@ -140,6 +189,10 @@ export default async function handler(req, res) {
         target.searchParams.set(key, String(value));
       }
     });
+
+    if (sharedSecret) {
+      target.searchParams.set('proxySecret', sharedSecret);
+    }
   }
 
   if (req.method === 'POST') {
@@ -148,11 +201,15 @@ export default async function handler(req, res) {
       return res.status(400).json({ success: false, error: 'POST 요청 본문에 action이 필요합니다.' });
     }
 
-    const policy = ensurePostActionPolicy(parsed.action.trim());
+    const policy = ensurePostActionPolicy(parsed.action.trim(), parsed);
     if (!policy.ok) {
       return res.status(policy.status).json({ success: false, error: policy.error });
     }
-    requestBody = parsed;
+
+    requestBody = Object.assign({}, parsed);
+    if (sharedSecret) {
+      requestBody.proxySecret = sharedSecret;
+    }
   }
 
   try {
