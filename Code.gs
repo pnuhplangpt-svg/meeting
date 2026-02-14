@@ -22,6 +22,7 @@ const PROP_PASSWORD_PEPPER = 'PASSWORD_PEPPER';
 const PROP_METRICS_REPORT_RECIPIENTS = 'METRICS_REPORT_RECIPIENTS';
 const PROP_METRICS_REPORT_THRESHOLD_ADMIN_FAIL = 'METRICS_REPORT_THRESHOLD_ADMIN_FAIL';
 const PROP_METRICS_REPORT_THRESHOLD_PASSWORD_FAIL = 'METRICS_REPORT_THRESHOLD_PASSWORD_FAIL';
+const PROP_PROXY_SHARED_SECRET = 'PROXY_SHARED_SECRET';
 const ALERT_WINDOW_MINUTES = 60;
 const RESERVATION_LOCK_WAIT_MS = 5000;
 
@@ -112,6 +113,21 @@ function getAdminCode() {
 
 function getPasswordPepper() {
   return (getScriptProperties().getProperty(PROP_PASSWORD_PEPPER) || '').trim();
+}
+
+function getProxySharedSecret() {
+  return (getScriptProperties().getProperty(PROP_PROXY_SHARED_SECRET) || '').trim();
+}
+
+function verifyProxySharedSecret(secret) {
+  const configured = getProxySharedSecret();
+  if (!configured) {
+    return { ok: true };
+  }
+  if (String(secret || '').trim() !== configured) {
+    return { ok: false, error: '허용되지 않은 호출입니다.' };
+  }
+  return { ok: true };
 }
 
 function getCache() {
@@ -485,6 +501,103 @@ function listRecentDateKeys(days, tz) {
   return keys;
 }
 
+function detectConsecutiveIncrease(series, minDays, minValue) {
+  const needDays = Number(minDays || 3);
+  const floorValue = Number(minValue || 1);
+  if (!Array.isArray(series) || series.length < needDays) {
+    return { detected: false, length: 0, current: 0, previous: 0 };
+  }
+
+  let streak = 1;
+  for (let i = series.length - 1; i > 0; i--) {
+    const curr = Number(series[i] || 0);
+    const prev = Number(series[i - 1] || 0);
+    if (curr > prev) {
+      streak++;
+    } else {
+      break;
+    }
+  }
+
+  const current = Number(series[series.length - 1] || 0);
+  const previous = Number(series[Math.max(0, series.length - 2)] || 0);
+  const detected = streak >= needDays && current >= floorValue;
+  return { detected: detected, length: streak, current: current, previous: previous };
+}
+
+function calculateMedian(values) {
+  const nums = (values || [])
+    .map(function(v) { return Number(v || 0); })
+    .filter(function(v) { return !isNaN(v); })
+    .sort(function(a, b) { return a - b; });
+
+  if (!nums.length) return 0;
+  const mid = Math.floor(nums.length / 2);
+  if (nums.length % 2 === 0) {
+    return (nums[mid - 1] + nums[mid]) / 2;
+  }
+  return nums[mid];
+}
+
+function detectSpike(series, options) {
+  const cfg = options || {};
+  const sampleSize = Number(cfg.sampleSize || 7);
+  const ratioThreshold = Number(cfg.ratioThreshold || 2);
+  const minDelta = Number(cfg.minDelta || 3);
+
+  if (!Array.isArray(series) || series.length < 2) {
+    return { detected: false, current: 0, baselineMedian: 0, ratio: 0 };
+  }
+
+  const current = Number(series[series.length - 1] || 0);
+  const start = Math.max(0, series.length - 1 - sampleSize);
+  const baselineValues = series.slice(start, series.length - 1);
+  const baselineMedian = calculateMedian(baselineValues);
+  const safeBaseline = Math.max(1, baselineMedian);
+  const ratio = Math.round((current / safeBaseline) * 100) / 100;
+
+  const detected = current >= (safeBaseline * ratioThreshold) && (current - baselineMedian) >= minDelta;
+  return { detected: detected, current: current, baselineMedian: baselineMedian, ratio: ratio };
+}
+
+function buildOperationalMetricsAnomalies(dayKeys, authFailSeries) {
+  const increase = detectConsecutiveIncrease(authFailSeries, 3, 3);
+  const spike = detectSpike(authFailSeries, {
+    sampleSize: 7,
+    ratioThreshold: 2,
+    minDelta: 3
+  });
+
+  const messages = [];
+  if (increase.detected) {
+    messages.push('인증실패가 최근 ' + increase.length + '일 연속 증가했습니다.');
+  }
+  if (spike.detected) {
+    messages.push('당일 인증실패가 최근 중앙값 대비 급증했습니다. (' + spike.current + '건, 기준 ' + spike.baselineMedian + '건)');
+  }
+
+  return {
+    hasAlert: messages.length > 0,
+    status: messages.length > 0 ? 'warning' : 'normal',
+    messages: messages,
+    details: {
+      consecutiveIncrease: {
+        detected: increase.detected,
+        days: increase.length,
+        current: increase.current,
+        previous: increase.previous
+      },
+      spike: {
+        detected: spike.detected,
+        current: spike.current,
+        baselineMedian: spike.baselineMedian,
+        ratio: spike.ratio
+      },
+      latestDay: dayKeys.length ? dayKeys[dayKeys.length - 1] : ''
+    }
+  };
+}
+
 function buildOperationalMetricsTrend(windowDays) {
   const effectiveWindowDays = Number(windowDays || 30);
   const tz = Session.getScriptTimeZone();
@@ -533,7 +646,8 @@ function buildOperationalMetricsTrend(windowDays) {
       reservationCreate: createSeries,
       authFail: authFailSeries,
       authFailMovingAvg7: movingAvg7
-    }
+    },
+    anomalies: buildOperationalMetricsAnomalies(dayKeys, authFailSeries)
   };
 }
 
@@ -556,7 +670,10 @@ function buildOperationalMetricsReport(metrics, options) {
   const windowDays = Number(metrics.windowDays || 30);
   const thresholdAdminFail = Number(options && options.thresholdAdminFail || 10);
   const thresholdPasswordFail = Number(options && options.thresholdPasswordFail || 20);
-  const hasAlert = Number(metrics.adminFail || 0) >= thresholdAdminFail || Number(metrics.passwordFail || 0) >= thresholdPasswordFail;
+  const thresholdAlert = Number(metrics.adminFail || 0) >= thresholdAdminFail || Number(metrics.passwordFail || 0) >= thresholdPasswordFail;
+  const trend = buildOperationalMetricsTrend(windowDays);
+  const anomalyAlert = Boolean(trend && trend.anomalies && trend.anomalies.hasAlert);
+  const hasAlert = thresholdAlert || anomalyAlert;
   const status = hasAlert ? '주의 필요' : '정상';
 
   const lines = [
@@ -574,7 +691,9 @@ function buildOperationalMetricsReport(metrics, options) {
     '- 회의실 변경 작업: ' + Number(metrics.roomChanges || 0) + '건',
     '- 활성 회의실: ' + Number(metrics.activeRooms || 0) + '개',
     '- 예정 예약: ' + Number(metrics.upcomingReservations || 0) + '건',
+    '- 이상치 탐지: ' + (anomalyAlert ? '경고 (' + trend.anomalies.messages.join(' / ') + ')' : '정상'),
     '',
+    '※ 이상치 규칙: 인증실패 3일 연속 증가, 당일값 급증(최근 중앙값 대비 2배 이상 & +3건 이상)',
     '※ 임계치 조정: Script Property ' + PROP_METRICS_REPORT_THRESHOLD_ADMIN_FAIL + ', ' + PROP_METRICS_REPORT_THRESHOLD_PASSWORD_FAIL,
     '※ 수신자 설정: Script Property ' + PROP_METRICS_REPORT_RECIPIENTS + ' (쉼표/세미콜론/줄바꿈 구분)'
   ];
@@ -678,6 +797,12 @@ function runScheduledOperationalMetricsReport() {
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
   const action = params.action || 'getReservations';
+  const proxyGate = verifyProxySharedSecret(params.proxySecret || '');
+
+  if (!proxyGate.ok) {
+    writeAudit('proxyGate', 'deny', 'system', action, proxyGate.error);
+    return jsonResponse({ success: false, error: proxyGate.error });
+  }
 
   try {
     switch (action) {
@@ -717,6 +842,12 @@ function doPost(e) {
   }
 
   const action = body.action || '';
+  const proxyGate = verifyProxySharedSecret(body.proxySecret || '');
+
+  if (!proxyGate.ok) {
+    writeAudit('proxyGate', 'deny', 'system', action, proxyGate.error);
+    return jsonResponse({ success: false, error: proxyGate.error });
+  }
 
   try {
     switch (action) {
