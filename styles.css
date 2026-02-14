@@ -1178,6 +1178,111 @@
       line-height: 1.4;
     }
 
+
+    .admin-metrics-grid {
+      display: grid;
+      grid-template-columns: repeat(2, minmax(0, 1fr));
+      gap: 8px;
+      margin-bottom: 8px;
+      max-height: 44vh;
+      overflow: auto;
+    }
+
+    .admin-metric-card {
+      border: 1px solid var(--gray-light);
+      border-radius: var(--radius-sm);
+      background: var(--gray-bg);
+      padding: 10px 12px;
+    }
+
+    .admin-metric-card .k {
+      font-size: 12px;
+      color: var(--gray-text);
+      margin-bottom: 4px;
+      font-weight: 600;
+    }
+
+    .admin-metric-card .v {
+      font-size: 18px;
+      color: var(--dark);
+      font-weight: 800;
+      letter-spacing: 0.2px;
+    }
+
+    
+    .admin-trend-box {
+      border: 1px solid var(--gray-light);
+      border-radius: var(--radius-sm);
+      background: var(--white);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .admin-trend-head {
+      font-size: 12px;
+      color: var(--gray-text);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .admin-trend-grid {
+      display: grid;
+      gap: 6px;
+      max-height: 22vh;
+      overflow: auto;
+    }
+
+    .admin-trend-row {
+      display: grid;
+      grid-template-columns: 58px repeat(3, minmax(0, 1fr));
+      gap: 6px;
+      align-items: center;
+      font-size: 12px;
+      border: 1px solid var(--gray-light);
+      border-radius: 8px;
+      background: var(--gray-bg);
+      padding: 7px 8px;
+    }
+
+    .admin-trend-row .d {
+      font-weight: 700;
+      color: var(--dark);
+    }
+
+    .admin-trend-row .m {
+      color: var(--gray-text);
+      white-space: nowrap;
+    }
+
+    .admin-report-box {
+      border: 1px solid var(--gray-light);
+      border-radius: var(--radius-sm);
+      background: var(--white);
+      padding: 10px;
+      margin-bottom: 10px;
+    }
+
+    .admin-report-title {
+      font-size: 12px;
+      color: var(--gray-text);
+      font-weight: 700;
+      margin-bottom: 6px;
+    }
+
+    .admin-report-text {
+      width: 100%;
+      min-height: 140px;
+      max-height: 30vh;
+      border: 1px solid var(--gray-light);
+      border-radius: var(--radius-sm);
+      background: var(--gray-bg);
+      font-size: 12px;
+      line-height: 1.5;
+      color: var(--dark);
+      resize: vertical;
+      padding: 10px;
+    }
+
     .admin-reservation-card {
       background: var(--white);
       border: 1px solid var(--gray-light);

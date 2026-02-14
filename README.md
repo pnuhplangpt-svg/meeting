@@ -30,6 +30,24 @@ The test uses an in-page mocked API (`fetch` override), so it is deterministic a
 - Security dashboard metrics are derived from these audit records (`getSecurityAlerts()`).
 
 
+
+## Monthly metrics report automation
+
+Operational metrics now support report preview/send for admins.
+
+### Script Properties
+
+- `METRICS_REPORT_RECIPIENTS`: report recipients (comma / semicolon / newline separated emails)
+- `METRICS_REPORT_THRESHOLD_ADMIN_FAIL`: alert threshold for admin auth failures (default: `10`)
+- `METRICS_REPORT_THRESHOLD_PASSWORD_FAIL`: alert threshold for reservation password failures (default: `20`)
+
+### Backend actions/functions
+
+- `GET action=getOperationalMetricsReport&adminToken=...`: returns report text preview and threshold/recipient info
+- `GET action=getOperationalMetricsTrend&adminToken=...`: returns 30-day daily trend + 7-day moving average for auth failures
+- `POST action=sendOperationalMetricsReport`: sends report email immediately (admin token required)
+- `runScheduledOperationalMetricsReport()`: trigger-safe function for time-based automatic sending
+
 ## Playwright 환경 빠른 구축 (로컬 PC)
 
 헷갈릴 수 있어서 **한 번에 설치+검증**하는 스크립트를 추가했습니다.

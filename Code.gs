@@ -19,6 +19,9 @@ const AUTH_LOCK_SECONDS = 60 * 15; // 15분
 
 const PROP_ADMIN_CODE = 'ADMIN_CODE';
 const PROP_PASSWORD_PEPPER = 'PASSWORD_PEPPER';
+const PROP_METRICS_REPORT_RECIPIENTS = 'METRICS_REPORT_RECIPIENTS';
+const PROP_METRICS_REPORT_THRESHOLD_ADMIN_FAIL = 'METRICS_REPORT_THRESHOLD_ADMIN_FAIL';
+const PROP_METRICS_REPORT_THRESHOLD_PASSWORD_FAIL = 'METRICS_REPORT_THRESHOLD_PASSWORD_FAIL';
 const ALERT_WINDOW_MINUTES = 60;
 const RESERVATION_LOCK_WAIT_MS = 5000;
 
@@ -37,6 +40,8 @@ function getSheet() {
   }
   return sheet;
 }
+
+
 
 function getAuditSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -292,6 +297,7 @@ function hashPassword(password) {
 
 // ─── GET 요청 핸들러 ────────────────────────────────────
 
+
 function getSecurityAlerts(params) {
   const adminToken = params && params.adminToken ? params.adminToken : '';
   const adminCheck = verifyAdminToken(adminToken);
@@ -389,6 +395,286 @@ function getOperationalChecks(params) {
   });
 }
 
+
+function getOperationalMetrics(params) {
+  const adminToken = params && params.adminToken ? params.adminToken : '';
+  const adminCheck = verifyAdminToken(adminToken);
+  if (!adminCheck.ok) {
+    return jsonResponse({ success: false, error: '관리자 권한이 필요합니다.' });
+  }
+
+  return jsonResponse({
+    success: true,
+    data: buildOperationalMetricsSnapshot(30)
+  });
+}
+
+function getMetricsReportRecipients() {
+  const raw = String(getScriptProperties().getProperty(PROP_METRICS_REPORT_RECIPIENTS) || '');
+  if (!raw) return [];
+  return raw
+    .split(/[;,\n]/)
+    .map(function(item) { return item.trim(); })
+    .filter(function(item) { return item.length > 0; });
+}
+
+function getNumericProperty(key, defaultValue) {
+  const raw = String(getScriptProperties().getProperty(key) || '').trim();
+  if (!raw) return defaultValue;
+  const parsed = parseInt(raw, 10);
+  return isNaN(parsed) ? defaultValue : parsed;
+}
+
+function buildOperationalMetricsSnapshot(windowDays) {
+  const effectiveWindowDays = Number(windowDays || 30);
+  const windowMs = effectiveWindowDays * 24 * 60 * 60 * 1000;
+  const nowMs = Date.now();
+
+  let reservationCreate = 0;
+  let reservationUpdate = 0;
+  let reservationDelete = 0;
+  let passwordFail = 0;
+  let adminFail = 0;
+  let roomChanges = 0;
+
+  const auditRows = getAuditSheet().getDataRange().getValues().slice(1);
+  auditRows.forEach(function(row) {
+    const ts = new Date(row[0]).getTime();
+    if (isNaN(ts) || (nowMs - ts) > windowMs) return;
+
+    const action = String(row[1] || '');
+    const result = String(row[2] || '');
+
+    if (action === 'createReservation' && result === 'success') reservationCreate++;
+    if (action === 'updateReservation' && result === 'success') reservationUpdate++;
+    if (action === 'deleteReservation' && result === 'success') reservationDelete++;
+    if (action === 'verifyPassword' && result === 'fail') passwordFail++;
+    if (action === 'verifyAdmin' && result === 'fail') adminFail++;
+    if ((action === 'addRoom' || action === 'updateRoom' || action === 'deleteRoom') && result === 'success') roomChanges++;
+  });
+
+  const roomRows = getRoomSheet().getDataRange().getValues().slice(1);
+  const activeRooms = roomRows.filter(function(row) { return String(row[3]).toUpperCase() === 'TRUE'; }).length;
+
+  const reservationRows = getSheet().getDataRange().getValues().slice(1);
+  const today = Utilities.formatDate(new Date(), Session.getScriptTimeZone(), 'yyyy-MM-dd');
+  const upcomingReservations = reservationRows.filter(function(row) {
+    return normalizeDateValue(row[1]) >= today;
+  }).length;
+
+  return {
+    windowDays: effectiveWindowDays,
+    reservationCreate: reservationCreate,
+    reservationUpdate: reservationUpdate,
+    reservationDelete: reservationDelete,
+    passwordFail: passwordFail,
+    adminFail: adminFail,
+    roomChanges: roomChanges,
+    activeRooms: activeRooms,
+    upcomingReservations: upcomingReservations
+  };
+}
+
+
+function listRecentDateKeys(days, tz) {
+  const keys = [];
+  for (let i = days - 1; i >= 0; i--) {
+    const d = new Date(Date.now() - (i * 24 * 60 * 60 * 1000));
+    keys.push(Utilities.formatDate(d, tz, 'yyyy-MM-dd'));
+  }
+  return keys;
+}
+
+function buildOperationalMetricsTrend(windowDays) {
+  const effectiveWindowDays = Number(windowDays || 30);
+  const tz = Session.getScriptTimeZone();
+  const dayKeys = listRecentDateKeys(effectiveWindowDays, tz);
+  const daySet = {};
+  dayKeys.forEach(function(day) { daySet[day] = true; });
+
+  const createByDay = {};
+  const passwordFailByDay = {};
+  const adminFailByDay = {};
+  dayKeys.forEach(function(day) {
+    createByDay[day] = 0;
+    passwordFailByDay[day] = 0;
+    adminFailByDay[day] = 0;
+  });
+
+  const auditRows = getAuditSheet().getDataRange().getValues().slice(1);
+  auditRows.forEach(function(row) {
+    const ts = new Date(row[0]);
+    if (isNaN(ts.getTime())) return;
+
+    const day = Utilities.formatDate(ts, tz, 'yyyy-MM-dd');
+    if (!daySet[day]) return;
+
+    const action = String(row[1] || '');
+    const result = String(row[2] || '');
+
+    if (action === 'createReservation' && result === 'success') createByDay[day]++;
+    if (action === 'verifyPassword' && result === 'fail') passwordFailByDay[day]++;
+    if (action === 'verifyAdmin' && result === 'fail') adminFailByDay[day]++;
+  });
+
+  const createSeries = dayKeys.map(function(day) { return createByDay[day] || 0; });
+  const authFailSeries = dayKeys.map(function(day) { return (passwordFailByDay[day] || 0) + (adminFailByDay[day] || 0); });
+  const movingAvg7 = authFailSeries.map(function(_, idx) {
+    const start = Math.max(0, idx - 6);
+    const slice = authFailSeries.slice(start, idx + 1);
+    const sum = slice.reduce(function(acc, n) { return acc + n; }, 0);
+    return Math.round((sum / slice.length) * 100) / 100;
+  });
+
+  return {
+    windowDays: effectiveWindowDays,
+    days: dayKeys,
+    series: {
+      reservationCreate: createSeries,
+      authFail: authFailSeries,
+      authFailMovingAvg7: movingAvg7
+    }
+  };
+}
+
+function getOperationalMetricsTrend(params) {
+  const adminToken = params && params.adminToken ? params.adminToken : '';
+  const adminCheck = verifyAdminToken(adminToken);
+  if (!adminCheck.ok) {
+    return jsonResponse({ success: false, error: '관리자 권한이 필요합니다.' });
+  }
+
+  return jsonResponse({
+    success: true,
+    data: buildOperationalMetricsTrend(30)
+  });
+}
+
+function buildOperationalMetricsReport(metrics, options) {
+  const tz = Session.getScriptTimeZone();
+  const generatedAt = Utilities.formatDate(new Date(), tz, 'yyyy-MM-dd HH:mm:ss');
+  const windowDays = Number(metrics.windowDays || 30);
+  const thresholdAdminFail = Number(options && options.thresholdAdminFail || 10);
+  const thresholdPasswordFail = Number(options && options.thresholdPasswordFail || 20);
+  const hasAlert = Number(metrics.adminFail || 0) >= thresholdAdminFail || Number(metrics.passwordFail || 0) >= thresholdPasswordFail;
+  const status = hasAlert ? '주의 필요' : '정상';
+
+  const lines = [
+    '[J동 회의실 예약] 월간 운영 리포트',
+    '',
+    '생성 시각: ' + generatedAt,
+    '집계 기간: 최근 ' + windowDays + '일',
+    '상태: ' + status,
+    '',
+    '- 예약 생성: ' + Number(metrics.reservationCreate || 0) + '건',
+    '- 예약 수정: ' + Number(metrics.reservationUpdate || 0) + '건',
+    '- 예약 삭제: ' + Number(metrics.reservationDelete || 0) + '건',
+    '- 예약 비밀번호 실패: ' + Number(metrics.passwordFail || 0) + '건 (임계치 ' + thresholdPasswordFail + ')',
+    '- 관리자 인증 실패: ' + Number(metrics.adminFail || 0) + '건 (임계치 ' + thresholdAdminFail + ')',
+    '- 회의실 변경 작업: ' + Number(metrics.roomChanges || 0) + '건',
+    '- 활성 회의실: ' + Number(metrics.activeRooms || 0) + '개',
+    '- 예정 예약: ' + Number(metrics.upcomingReservations || 0) + '건',
+    '',
+    '※ 임계치 조정: Script Property ' + PROP_METRICS_REPORT_THRESHOLD_ADMIN_FAIL + ', ' + PROP_METRICS_REPORT_THRESHOLD_PASSWORD_FAIL,
+    '※ 수신자 설정: Script Property ' + PROP_METRICS_REPORT_RECIPIENTS + ' (쉼표/세미콜론/줄바꿈 구분)'
+  ];
+
+  return {
+    generatedAt: generatedAt,
+    status: status,
+    hasAlert: hasAlert,
+    text: lines.join('\n')
+  };
+}
+
+function getOperationalMetricsReport(params) {
+  const adminToken = params && params.adminToken ? params.adminToken : '';
+  const adminCheck = verifyAdminToken(adminToken);
+  if (!adminCheck.ok) {
+    return jsonResponse({ success: false, error: '관리자 권한이 필요합니다.' });
+  }
+
+  const metrics = buildOperationalMetricsSnapshot(30);
+  const thresholdAdminFail = getNumericProperty(PROP_METRICS_REPORT_THRESHOLD_ADMIN_FAIL, 10);
+  const thresholdPasswordFail = getNumericProperty(PROP_METRICS_REPORT_THRESHOLD_PASSWORD_FAIL, 20);
+  const report = buildOperationalMetricsReport(metrics, {
+    thresholdAdminFail: thresholdAdminFail,
+    thresholdPasswordFail: thresholdPasswordFail
+  });
+
+  return jsonResponse({
+    success: true,
+    data: {
+      reportText: report.text,
+      hasAlert: report.hasAlert,
+      status: report.status,
+      thresholds: {
+        adminFail: thresholdAdminFail,
+        passwordFail: thresholdPasswordFail
+      },
+      recipients: getMetricsReportRecipients()
+    }
+  });
+}
+
+function sendOperationalMetricsReport(body) {
+  const adminCheck = verifyAdminToken(body.adminToken || '');
+  if (!adminCheck.ok) {
+    return jsonResponse({ success: false, error: '관리자 권한이 필요합니다.' });
+  }
+
+  const recipients = getMetricsReportRecipients();
+  if (recipients.length === 0) {
+    return jsonResponse({ success: false, error: 'METRICS_REPORT_RECIPIENTS 설정이 필요합니다.' });
+  }
+
+  const thresholdAdminFail = getNumericProperty(PROP_METRICS_REPORT_THRESHOLD_ADMIN_FAIL, 10);
+  const thresholdPasswordFail = getNumericProperty(PROP_METRICS_REPORT_THRESHOLD_PASSWORD_FAIL, 20);
+  const metrics = buildOperationalMetricsSnapshot(30);
+  const report = buildOperationalMetricsReport(metrics, {
+    thresholdAdminFail: thresholdAdminFail,
+    thresholdPasswordFail: thresholdPasswordFail
+  });
+
+  const subjectPrefix = report.hasAlert ? '[주의]' : '[정상]';
+  const subject = subjectPrefix + ' J동 회의실 월간 운영 리포트';
+  const to = recipients.join(',');
+
+  MailApp.sendEmail({
+    to: to,
+    subject: subject,
+    body: report.text
+  });
+
+  writeAudit('sendOperationalMetricsReport', 'success', 'admin', to, 'status=' + report.status);
+  return jsonResponse({ success: true, data: { recipients: recipients, status: report.status } });
+}
+
+function runScheduledOperationalMetricsReport() {
+  const recipients = getMetricsReportRecipients();
+  if (recipients.length === 0) {
+    writeAudit('sendOperationalMetricsReport', 'skip', 'system', '', 'METRICS_REPORT_RECIPIENTS not configured');
+    return;
+  }
+
+  const thresholdAdminFail = getNumericProperty(PROP_METRICS_REPORT_THRESHOLD_ADMIN_FAIL, 10);
+  const thresholdPasswordFail = getNumericProperty(PROP_METRICS_REPORT_THRESHOLD_PASSWORD_FAIL, 20);
+  const metrics = buildOperationalMetricsSnapshot(30);
+  const report = buildOperationalMetricsReport(metrics, {
+    thresholdAdminFail: thresholdAdminFail,
+    thresholdPasswordFail: thresholdPasswordFail
+  });
+  const subjectPrefix = report.hasAlert ? '[주의]' : '[정상]';
+
+  MailApp.sendEmail({
+    to: recipients.join(','),
+    subject: subjectPrefix + ' J동 회의실 월간 운영 리포트(자동 발송)',
+    body: report.text
+  });
+
+  writeAudit('sendOperationalMetricsReport', 'success', 'system', recipients.join(','), 'scheduled status=' + report.status);
+}
+
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
   const action = params.action || 'getReservations';
@@ -407,6 +693,12 @@ function doGet(e) {
         return getSecurityAlerts(params);
       case 'getOperationalChecks':
         return getOperationalChecks(params);
+      case 'getOperationalMetrics':
+        return getOperationalMetrics(params);
+      case 'getOperationalMetricsReport':
+        return getOperationalMetricsReport(params);
+      case 'getOperationalMetricsTrend':
+        return getOperationalMetricsTrend(params);
       default:
         return jsonResponse({ success: false, error: '알 수 없는 액션입니다.' });
     }
@@ -442,6 +734,8 @@ function doPost(e) {
         return updateRoom(body);
       case 'deleteRoom':
         return deleteRoom(body);
+      case 'sendOperationalMetricsReport':
+        return sendOperationalMetricsReport(body);
       default:
         return jsonResponse({ success: false, error: '알 수 없는 액션입니다.' });
     }

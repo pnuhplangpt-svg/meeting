@@ -253,6 +253,7 @@
             새로고침
           </button>
           <button class="btn btn-outline" id="btnAdminChecks">운영 점검</button>
+          <button class="btn btn-outline" id="btnAdminMetrics">월간 지표</button>
           <button class="btn btn-outline-red" id="btnAdminDeletePast">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             지난 예약 정리
@@ -330,6 +331,28 @@
       <div id="adminChecksList" class="admin-checks-list"></div>
       <div class="btn-group">
         <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminChecks">닫기</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- ════════ 관리자 월간 지표 모달 ════════ -->
+  <div class="modal-overlay" id="modalAdminMetrics">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h3>운영 지표 (최근 30일)</h3>
+      <div id="adminMetricsSummary" class="admin-checks-summary"></div>
+      <div id="adminMetricsGrid" class="admin-metrics-grid"></div>
+      <div id="adminMetricsTrend" class="admin-trend-box"></div>
+      <div class="admin-report-box">
+        <div class="admin-report-title">월간 리포트 미리보기</div>
+        <textarea id="adminMetricsReportText" class="admin-report-text" readonly></textarea>
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-outline" id="btnAdminPreviewReport">리포트 새로고침</button>
+        <button class="btn btn-primary" id="btnAdminSendReport">이메일 발송</button>
+        <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminMetrics">닫기</button>
       </div>
     </div>
   </div>

@@ -194,6 +194,15 @@ function bindUiActions() {
   var btnAdminChecks = byId('btnAdminChecks');
   if (btnAdminChecks) btnAdminChecks.addEventListener('click', adminRunChecks);
 
+  var btnAdminMetrics = byId('btnAdminMetrics');
+  if (btnAdminMetrics) btnAdminMetrics.addEventListener('click', adminLoadMetrics);
+
+  var btnAdminPreviewReport = byId('btnAdminPreviewReport');
+  if (btnAdminPreviewReport) btnAdminPreviewReport.addEventListener('click', adminPreviewMetricsReport);
+
+  var btnAdminSendReport = byId('btnAdminSendReport');
+  if (btnAdminSendReport) btnAdminSendReport.addEventListener('click', adminSendMetricsReport);
+
   var btnAdminAddRoom = byId('btnAdminAddRoom');
   if (btnAdminAddRoom) btnAdminAddRoom.addEventListener('click', adminAddRoom);
 
@@ -1900,6 +1909,140 @@ function exitAdminMode() {
   adminAuthToken = '';
   adminReservations = [];
   navigateTo('screenHome');
+}
+
+
+function renderAdminMetrics(data) {
+  var grid = document.getElementById('adminMetricsGrid');
+  var summary = document.getElementById('adminMetricsSummary');
+  if (!grid) return;
+
+  var items = [
+    { label: '예약 생성', value: Number(data.reservationCreate || 0) + '건' },
+    { label: '예약 수정', value: Number(data.reservationUpdate || 0) + '건' },
+    { label: '예약 삭제', value: Number(data.reservationDelete || 0) + '건' },
+    { label: '예약 인증 실패', value: Number(data.passwordFail || 0) + '건' },
+    { label: '관리자 인증 실패', value: Number(data.adminFail || 0) + '건' },
+    { label: '회의실 변경', value: Number(data.roomChanges || 0) + '건' },
+    { label: '활성 회의실', value: Number(data.activeRooms || 0) + '개' },
+    { label: '향후 예약', value: Number(data.upcomingReservations || 0) + '건' }
+  ];
+
+  var html = '';
+  items.forEach(function(it) {
+    html += '<div class="admin-metric-card">' +
+      '<div class="k">' + escapeHtml(it.label) + '</div>' +
+      '<div class="v">' + escapeHtml(String(it.value)) + '</div>' +
+    '</div>';
+  });
+  grid.innerHTML = html;
+
+  if (summary) {
+    summary.textContent = '집계 기간: 최근 ' + Number(data.windowDays || 30) + '일';
+  }
+}
+
+
+function renderAdminMetricsTrend(data) {
+  var wrap = document.getElementById('adminMetricsTrend');
+  if (!wrap) return;
+
+  var days = (data && data.days) || [];
+  var series = (data && data.series) || {};
+  var createSeries = series.reservationCreate || [];
+  var failSeries = series.authFail || [];
+  var avgSeries = series.authFailMovingAvg7 || [];
+
+  if (!days.length) {
+    wrap.innerHTML = '<div class="admin-check-item warn"><div class="label">no-data</div><div class="detail">추이 데이터가 없습니다.</div></div>';
+    return;
+  }
+
+  var start = Math.max(0, days.length - 7);
+  var html = '<div class="admin-trend-head">최근 7일 추이 (인증실패 7일 이동평균)</div>';
+  html += '<div class="admin-trend-grid">';
+  for (var i = start; i < days.length; i++) {
+    html += '<div class="admin-trend-row">' +
+      '<div class="d">' + escapeHtml(days[i].slice(5)) + '</div>' +
+      '<div class="m">예약생성 ' + Number(createSeries[i] || 0) + '</div>' +
+      '<div class="m">인증실패 ' + Number(failSeries[i] || 0) + '</div>' +
+      '<div class="m">7일평균 ' + Number(avgSeries[i] || 0) + '</div>' +
+    '</div>';
+  }
+  html += '</div>';
+  wrap.innerHTML = html;
+}
+
+async function adminPreviewMetricsReport() {
+  showLoading(true);
+  try {
+    var res = await apiGet('getOperationalMetricsReport', { adminToken: adminAuthToken });
+    showLoading(false);
+    if (!res.success) {
+      showToast(res.error || '리포트 조회에 실패했습니다.', 'error');
+      return;
+    }
+
+    var data = res.data || {};
+    var area = document.getElementById('adminMetricsReportText');
+    if (area) area.value = String(data.reportText || '리포트 데이터가 없습니다.');
+    if (Array.isArray(data.recipients) && data.recipients.length > 0) {
+      showToast('리포트 수신자: ' + data.recipients.join(', '), data.hasAlert ? 'warning' : 'success');
+    }
+  } catch (e) {
+    showLoading(false);
+    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+  }
+}
+
+async function adminSendMetricsReport() {
+  if (!adminAuthToken) return;
+  if (!confirm('월간 운영 리포트를 설정된 이메일로 발송할까요?')) return;
+
+  showLoading(true);
+  try {
+    var res = await apiPost({
+      action: 'sendOperationalMetricsReport',
+      adminToken: adminAuthToken
+    });
+    showLoading(false);
+
+    if (!res.success) {
+      showToast(res.error || '리포트 발송에 실패했습니다.', 'error');
+      return;
+    }
+
+    var data = res.data || {};
+    var recipients = Array.isArray(data.recipients) ? data.recipients.join(', ') : '';
+    showToast('리포트 발송 완료' + (recipients ? ' (' + recipients + ')' : ''), 'success');
+  } catch (e) {
+    showLoading(false);
+    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+  }
+}
+
+async function adminLoadMetrics() {
+  showLoading(true);
+  try {
+    var metricsRes = await apiGet('getOperationalMetrics', { adminToken: adminAuthToken });
+    if (!metricsRes.success) {
+      showLoading(false);
+      showToast(metricsRes.error || '운영 지표 조회에 실패했습니다.', 'error');
+      return;
+    }
+
+    renderAdminMetrics(metricsRes.data || {});
+    openModal('modalAdminMetrics');
+
+    var trendRes = await apiGet('getOperationalMetricsTrend', { adminToken: adminAuthToken });
+    renderAdminMetricsTrend(trendRes.success ? (trendRes.data || {}) : {});
+
+    showLoading(false);
+    await adminPreviewMetricsReport();
+  } catch (e) {
+    showLoading(false);
+    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+  }
 }
 
 async function adminRunChecks() {
