@@ -7,7 +7,6 @@
 const SHEET_NAME = '예약';
 const ROOM_SHEET_NAME = '회의실';
 const AUDIT_SHEET_NAME = 'Audit';
-const LEGACY_ADMIN_CODE = '041082'; // 마이그레이션용 fallback (운영 시 Script Property 사용 권장)
 
 const RESERVATION_TOKEN_TTL_SECONDS = 60 * 10; // 10분
 const ADMIN_TOKEN_TTL_SECONDS = 60 * 30; // 30분
