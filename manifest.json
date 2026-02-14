@@ -1,0 +1,27 @@
+{
+  "name": "J동 회의실 예약",
+  "short_name": "회의실예약",
+  "description": "병원 J동 6~9층 미니 회의실 예약 시스템",
+  "start_url": "./index.html",
+  "display": "fullscreen",
+  "background_color": "#ffffff",
+  "theme_color": "#006241",
+  "orientation": "any",
+  "scope": "./",
+  "lang": "ko",
+  "categories": ["productivity", "business"],
+  "icons": [
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 512 512'><rect fill='%23006241' width='512' height='512' rx='96'/><text x='256' y='320' text-anchor='middle' fill='white' font-size='220' font-family='sans-serif' font-weight='bold'>J</text></svg>",
+      "sizes": "512x512",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 192 192'><rect fill='%23006241' width='192' height='192' rx='36'/><text x='96' y='124' text-anchor='middle' fill='white' font-size='84' font-family='sans-serif' font-weight='bold'>J</text></svg>",
+      "sizes": "192x192",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
