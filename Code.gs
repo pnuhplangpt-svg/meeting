@@ -8,7 +8,6 @@ const SHEET_NAME = '예약';
 const ROOM_SHEET_NAME = '회의실';
 
 const AUDIT_SHEET_NAME = 'Audit';
-
 const LEGACY_ADMIN_CODE = '041082'; // 마이그레이션용 fallback (운영 시 Script Property 사용 권장)
 
 const RESERVATION_TOKEN_TTL_SECONDS = 60 * 10; // 10분
@@ -23,6 +22,7 @@ const PROP_ADMIN_CODE = 'ADMIN_CODE';
 const PROP_PASSWORD_PEPPER = 'PASSWORD_PEPPER';
 
 const ALERT_WINDOW_MINUTES = 60;
+const RESERVATION_LOCK_WAIT_MS = 5000;
 
 // ─── 유틸리티 ───────────────────────────────────────────
 function getSheet() {
@@ -231,6 +231,36 @@ function normalizeTimeValue(value) {
   return String(value);
 }
 
+function isValidDateString(value) {
+  return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
+}
+
+function isValidTimeString(value) {
+  return /^([01]\d|2[0-3]):(00|30)$/.test(String(value || ''));
+}
+
+function isValidTimeRange(startTime, endTime) {
+  const start = normalizeTimeValue(startTime);
+  const end = normalizeTimeValue(endTime);
+  return isValidTimeString(start) && isValidTimeString(end) && start < end;
+}
+
+function sanitizeText(value, maxLength) {
+  const v = String(value || '').trim();
+  if (!v) return '';
+  return v.substring(0, maxLength);
+}
+
+function withReservationLock(callback) {
+  const lock = LockService.getScriptLock();
+  lock.waitLock(RESERVATION_LOCK_WAIT_MS);
+  try {
+    return callback();
+  } finally {
+    lock.releaseLock();
+  }
+}
+
 // ─── SHA-256 해싱 ───────────────────────────────────────
 function hashPassword(password) {
   const pepper = getPasswordPepper();
@@ -437,41 +467,56 @@ function getReservationById(params) {
 // ─── 예약 생성 ──────────────────────────────────────────
 function createReservation(body) {
   const { date, floor, startTime, endTime, teamName, userName, password } = body;
+  const safeTeamName = sanitizeText(teamName, 30);
+  const safeUserName = sanitizeText(userName, 20);
+  const safeFloor = String(floor || '').trim();
+  const safeDate = normalizeDateValue(date);
+  const safeStart = normalizeTimeValue(startTime);
+  const safeEnd = normalizeTimeValue(endTime);
 
-  if (!date || !floor || !startTime || !endTime || !teamName || !userName || !password) {
+  if (!safeDate || !safeFloor || !safeStart || !safeEnd || !safeTeamName || !safeUserName || !password) {
     return jsonResponse({ success: false, error: '모든 필드를 입력해주세요.' });
+  }
+
+  if (!isValidDateString(safeDate)) {
+    return jsonResponse({ success: false, error: '날짜 형식이 올바르지 않습니다.' });
+  }
+
+  if (!isValidTimeRange(safeStart, safeEnd)) {
+    return jsonResponse({ success: false, error: '시간 범위가 올바르지 않습니다.' });
   }
 
   if (!/^\d{4}$/.test(password)) {
     return jsonResponse({ success: false, error: '비밀번호는 4자리 숫자여야 합니다.' });
   }
 
-  const conflict = checkTimeConflict(date, floor, startTime, endTime);
-  if (conflict) {
-    return jsonResponse({ success: false, error: '해당 시간에 이미 예약이 있습니다.' });
-  }
+  return withReservationLock(function() {
+    const conflict = checkTimeConflict(safeDate, safeFloor, safeStart, safeEnd);
+    if (conflict) {
+      return jsonResponse({ success: false, error: '해당 시간에 이미 예약이 있습니다.' });
+    }
 
-  const sheet = getSheet();
-  const id = generateId();
-  const passwordHash = hashPassword(password);
-  const createdAt = new Date().toISOString();
+    const sheet = getSheet();
+    const id = generateId();
+    const passwordHash = hashPassword(password);
+    const createdAt = new Date().toISOString();
 
-  sheet.appendRow([id, date, floor, startTime, endTime, teamName, userName, passwordHash, createdAt]);
+    sheet.appendRow([id, safeDate, safeFloor, safeStart, safeEnd, safeTeamName, safeUserName, passwordHash, createdAt]);
 
-  writeAudit('createReservation', 'success', 'user', id, date + ' ' + floor + ' ' + startTime + '~' + endTime);
-
-  return jsonResponse({
-    success: true,
-    data: {
-      '예약ID': id,
-      '날짜': date,
-      '층': floor,
-      '시작시간': startTime,
-      '종료시간': endTime,
-      '팀명': teamName,
-      '예약자': userName
-    },
-    message: '예약이 완료되었습니다.'
+    writeAudit('createReservation', 'success', 'user', id, safeDate + ' ' + safeFloor + ' ' + safeStart + '~' + safeEnd);
+    return jsonResponse({
+      success: true,
+      data: {
+        '예약ID': id,
+        '날짜': safeDate,
+        '층': safeFloor,
+        '시작시간': safeStart,
+        '종료시간': safeEnd,
+        '팀명': safeTeamName,
+        '예약자': safeUserName
+      },
+      message: '예약이 완료되었습니다.'
+    });
   });
 }
 
@@ -529,14 +574,12 @@ function verifyPassword(body) {
       if (storedHash !== inputHash) {
         recordAuthFailure('reservation', id);
         writeAudit('verifyPassword', 'fail', 'user', id, 'password mismatch');
-        
         return jsonResponse({ success: false, error: '비밀번호가 일치하지 않습니다.' });
       }
 
       clearAuthFailure('reservation', id);
       const token = issueReservationToken(id);
       writeAudit('verifyPassword', 'success', 'user', id, '');
-
       return jsonResponse({ success: true, token: token, message: '인증 성공' });
     }
   }
@@ -561,45 +604,59 @@ function updateReservation(body) {
     return jsonResponse({ success: false, error: tokenCheck.error });
   }
 
-  const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
-  const rows = data.slice(1);
+  return withReservationLock(function() {
+    const sheet = getSheet();
+    const data = sheet.getDataRange().getValues();
+    const rows = data.slice(1);
 
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === String(id)) {
-      const currentDate = normalizeDateValue(rows[i][1]);
-      const currentFloor = String(rows[i][2]);
-      const currentStart = normalizeTimeValue(rows[i][3]);
-      const currentEnd = normalizeTimeValue(rows[i][4]);
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(id)) {
+        const currentDate = normalizeDateValue(rows[i][1]);
+        const currentFloor = String(rows[i][2]);
+        const currentStart = normalizeTimeValue(rows[i][3]);
+        const currentEnd = normalizeTimeValue(rows[i][4]);
 
-      const newDate = date || currentDate;
-      const newFloor = floor || currentFloor;
-      const newStart = startTime || currentStart;
-      const newEnd = endTime || currentEnd;
+        const newDate = date ? normalizeDateValue(date) : currentDate;
+        const newFloor = floor ? String(floor).trim() : currentFloor;
+        const newStart = startTime ? normalizeTimeValue(startTime) : currentStart;
+        const newEnd = endTime ? normalizeTimeValue(endTime) : currentEnd;
+        const newTeamName = teamName !== undefined ? sanitizeText(teamName, 30) : String(rows[i][5]);
+        const newUserName = userName !== undefined ? sanitizeText(userName, 20) : String(rows[i][6]);
 
-      const conflict = checkTimeConflict(newDate, newFloor, newStart, newEnd, id);
-      if (conflict) {
-        return jsonResponse({ success: false, error: '해당 시간에 이미 예약이 있습니다.' });
+        if (!isValidDateString(newDate)) {
+          return jsonResponse({ success: false, error: '날짜 형식이 올바르지 않습니다.' });
+        }
+
+        if (!isValidTimeRange(newStart, newEnd)) {
+          return jsonResponse({ success: false, error: '시간 범위가 올바르지 않습니다.' });
+        }
+
+        if (!newFloor || !newTeamName || !newUserName) {
+          return jsonResponse({ success: false, error: '필수 값이 비어 있습니다.' });
+        }
+
+        const conflict = checkTimeConflict(newDate, newFloor, newStart, newEnd, id);
+        if (conflict) {
+          return jsonResponse({ success: false, error: '해당 시간에 이미 예약이 있습니다.' });
+        }
+
+        const rowIndex = i + 2;
+        sheet.getRange(rowIndex, 2).setValue(newDate);
+        sheet.getRange(rowIndex, 3).setValue(newFloor);
+        sheet.getRange(rowIndex, 4).setValue(newStart);
+        sheet.getRange(rowIndex, 5).setValue(newEnd);
+        sheet.getRange(rowIndex, 6).setValue(newTeamName);
+        sheet.getRange(rowIndex, 7).setValue(newUserName);
+
+        // 민감 작업 완료 후 토큰 폐기(재사용 방지)
+        deleteToken(token);
+        writeAudit('updateReservation', 'success', 'user', id, newDate + ' ' + newFloor + ' ' + newStart + '~' + newEnd);
+        return jsonResponse({ success: true, message: '예약이 수정되었습니다.' });
       }
-
-      const rowIndex = i + 2;
-      if (date) sheet.getRange(rowIndex, 2).setValue(date);
-      if (floor) sheet.getRange(rowIndex, 3).setValue(floor);
-      if (startTime) sheet.getRange(rowIndex, 4).setValue(startTime);
-      if (endTime) sheet.getRange(rowIndex, 5).setValue(endTime);
-      if (teamName) sheet.getRange(rowIndex, 6).setValue(teamName);
-      if (userName) sheet.getRange(rowIndex, 7).setValue(userName);
-
-      // 민감 작업 완료 후 토큰 폐기(재사용 방지)
-      deleteToken(token);
-
-      writeAudit('updateReservation', 'success', 'user', id, newDate + ' ' + newFloor + ' ' + newStart + '~' + newEnd);
-
-      return jsonResponse({ success: true, message: '예약이 수정되었습니다.' });
     }
-  }
 
-  return jsonResponse({ success: false, error: '예약을 찾을 수 없습니다.' });
+    return jsonResponse({ success: false, error: '예약을 찾을 수 없습니다.' });
+  });
 }
 
 // ─── 예약 삭제(토큰 인증: token 또는 adminToken) ─────────
@@ -634,24 +691,24 @@ function deleteReservation(body) {
     return jsonResponse({ success: false, error: '유효하지 않거나 만료된 인증 정보입니다.' });
   }
 
-  const sheet = getSheet();
-  const data = sheet.getDataRange().getValues();
-  const rows = data.slice(1);
+  return withReservationLock(function() {
+    const sheet = getSheet();
+    const data = sheet.getDataRange().getValues();
+    const rows = data.slice(1);
 
-  for (let i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]) === String(id)) {
-      sheet.deleteRow(i + 2);
-      if (usedReservationToken) {
-        deleteToken(token);
+    for (let i = 0; i < rows.length; i++) {
+      if (String(rows[i][0]) === String(id)) {
+        sheet.deleteRow(i + 2);
+        if (usedReservationToken) {
+          deleteToken(token);
+        }
+        writeAudit('deleteReservation', 'success', usedReservationToken ? 'user' : 'admin', id, '');
+        return jsonResponse({ success: true, message: '예약이 삭제되었습니다.' });
       }
-
-      writeAudit('deleteReservation', 'success', usedReservationToken ? 'user' : 'admin', id, '');
-
-      return jsonResponse({ success: true, message: '예약이 삭제되었습니다.' });
     }
-  }
 
-  return jsonResponse({ success: false, error: '예약을 찾을 수 없습니다.' });
+    return jsonResponse({ success: false, error: '예약을 찾을 수 없습니다.' });
+  });
 }
 
 // ─── 관리자 인증(토큰 발급) ─────────────────────────────
@@ -672,14 +729,11 @@ function verifyAdmin(params) {
   if (code === adminCode) {
     clearAuthFailure('admin', 'global');
     const token = issueAdminToken();
-
     writeAudit('verifyAdmin', 'success', 'admin', 'global', '');
-
     return jsonResponse({ success: true, token: token, message: '관리자 인증 성공' });
   }
 
   recordAuthFailure('admin', 'global');
-
   writeAudit('verifyAdmin', 'fail', 'admin', 'global', 'code mismatch');
 
   return jsonResponse({ success: false, error: '관리자 인증에 실패했습니다.' });
@@ -729,7 +783,6 @@ function addRoom(body) {
   sheet.appendRow([floor, floor, name, 'TRUE']);
 
   writeAudit('addRoom', 'success', 'admin', floor, name);
-
   return jsonResponse({ success: true, message: '회의실이 추가되었습니다.' });
 }
 
@@ -802,6 +855,5 @@ function initializeSheet() {
   getSheet();
   getRoomSheet();
   getAuditSheet();
-
   Logger.log('시트가 초기화되었습니다.');
 }

@@ -696,6 +696,34 @@
       text-align: center;
     }
 
+    .delete-summary {
+      border: 1px solid var(--gray-line);
+      border-radius: var(--radius-sm);
+      background: var(--gray-bg);
+      padding: 10px 12px;
+      margin-bottom: 10px;
+    }
+
+    .delete-summary-row {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      padding: 3px 0;
+    }
+
+    .delete-summary-row .k {
+      color: var(--gray-text);
+      min-width: 40px;
+    }
+
+    .delete-summary-row .v {
+      color: var(--dark);
+      font-weight: 600;
+      text-align: right;
+      word-break: break-word;
+    }
+
     .modal .btn-group {
       display: flex;
       gap: 10px;

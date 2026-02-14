@@ -21,7 +21,8 @@ const state = (function createAppState() {
     pendingId: null,
     reservationAuthToken: null,
     editReservationId: null,
-    editOriginalReservation: null
+    editOriginalReservation: null,
+    deleteTargetReservation: null
   };
 
   const api = {};
@@ -314,6 +315,7 @@ function resetAndGoHome() {
   state.selectedDate = null;
   state.selectedStartTime = null;
   state.selectedEndTime = null;
+  state.deleteTargetReservation = null;
 
   const btn = document.getElementById('btnStartReserve');
   btn.disabled = true;
@@ -569,7 +571,6 @@ async function loadTimeSlots() {
   state.currentReservedSlots = reservedSlots;
   renderTimeGrid(reservedSlots);
   updateConfirmButton();
-  
   if (state.editReservationId && state.selectedEndTime) {
     renderSelectionSummary();
   }
@@ -783,7 +784,6 @@ function updateConfirmButton() {
     state.selectedEndTime &&
     team.length > 0 &&
     name.length > 0 &&
-
     (state.editReservationId ? true : /^\d{4}$/.test(pw));
 
   btn.disabled = !isValid;
@@ -801,7 +801,6 @@ document.addEventListener('input', function(e) {
     if (state.editReservationId) {
       renderSelectionSummary();
     }
-
   }
 });
 
@@ -972,6 +971,7 @@ function requestDelete(id) {
   state.reservationAuthToken = null;
   state.pendingAction = 'delete';
   state.pendingId = id;
+  state.deleteTargetReservation = null;
   document.getElementById('modalPasswordInput').value = '';
   openModal('modalPassword');
 
@@ -1032,8 +1032,6 @@ async function verifyAndEdit(id) {
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = '';
         setReservationPasswordMode(true);
-
-
         renderCalendar();
         await loadTimeSlots();
         showFormSection();
@@ -1094,6 +1092,30 @@ async function submitUpdate(id) {
   }
 }
 
+function renderDeleteSummary() {
+  var box = document.getElementById('modalDeleteSummary');
+  if (!box) return;
+
+  var r = state.deleteTargetReservation;
+  if (!r) {
+    box.innerHTML = '';
+    return;
+  }
+
+  box.innerHTML =
+    '<div class="delete-summary-row"><span class="k">층</span><span class="v">' + escapeHtml(String(r['층'] || '')) + '</span></div>' +
+    '<div class="delete-summary-row"><span class="k">날짜</span><span class="v">' + escapeHtml(formatDateKr(String(r['날짜'] || ''))) + '</span></div>' +
+    '<div class="delete-summary-row"><span class="k">시간</span><span class="v">' + escapeHtml(String(r['시작시간'] || '') + ' ~ ' + String(r['종료시간'] || '')) + '</span></div>' +
+    '<div class="delete-summary-row"><span class="k">팀명</span><span class="v">' + escapeHtml(String(r['팀명'] || '')) + '</span></div>' +
+    '<div class="delete-summary-row"><span class="k">예약자</span><span class="v">' + escapeHtml(String(r['예약자'] || '')) + '</span></div>';
+}
+
+function clearDeleteSummary() {
+  state.deleteTargetReservation = null;
+  var box = document.getElementById('modalDeleteSummary');
+  if (box) box.innerHTML = '';
+}
+
 async function verifyAndDelete(id) {
   const pw = document.getElementById('modalPasswordInput').value.trim();
   if (!pw) {
@@ -1124,6 +1146,11 @@ async function verifyAndDelete(id) {
       return;
     }
 
+    state.deleteTargetReservation = state.reservations.find(function(r) {
+      return r['예약ID'] === id;
+    }) || null;
+    renderDeleteSummary();
+
     // 삭제 확인 모달
     openModal('modalDelete');
     document.getElementById('modalDeleteConfirm').onclick = async function() {
@@ -1141,13 +1168,18 @@ async function verifyAndDelete(id) {
 
         if (res.success) {
           showToast('예약이 삭제되었습니다.', 'success');
-          loadReservations();
+          await loadReservations();
+          renderReservations();
+
         } else {
           showToast(res.error || '삭제에 실패했습니다.', 'error');
         }
       } catch (e) {
         showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+      } finally {
+        clearDeleteSummary();
+
       }
     };
   } catch (e) {
@@ -1169,6 +1201,10 @@ function closeModal(id) {
   const overlay = document.getElementById(id);
   overlay.classList.remove('show');
   document.body.style.overflow = '';
+  if (id === 'modalDelete') {
+    clearDeleteSummary();
+  }
+
 }
 
 // 모달 바깥 클릭 시 닫기
@@ -1830,7 +1866,6 @@ async function adminRefresh() {
       });
 
       await loadAdminSecurityAlerts();
-
       renderAdminStats();
       renderAdminList();
     } else {
@@ -1841,7 +1876,6 @@ async function adminRefresh() {
     list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(formatApiError(e, '서버에 연결할 수 없습니다.')) + '</p></div>';
   }
 }
-
 
 async function loadAdminSecurityAlerts() {
   if (!adminAuthToken) {
