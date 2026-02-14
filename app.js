@@ -1,7 +1,7 @@
 // ═══════════════════════════════════════════════════════
 // 설정
 // ═══════════════════════════════════════════════════════
-const API_URL = 'https://script.google.com/macros/s/AKfycbxcFXOn1btraUlwjNkKQq3g-r4fj6x23ezWNorvo0LFWvUL1Jxg6nuj3z-Hwn6SsOTWNw/exec';
+const API_URL = '/api/proxy';
 
 // ═══════════════════════════════════════════════════════
 // 상태 관리
