@@ -842,7 +842,15 @@ async function submitReservation() {
     showLoading(false);
 
     if (res.success) {
-      showCompleteScreen(res.data);
+      const completeData = res.data || {
+        '날짜': state.selectedDate,
+        '층': state.selectedFloor,
+        '시작시간': state.selectedStartTime,
+        '종료시간': state.selectedEndTime,
+        '팀명': document.getElementById('inputTeam').value.trim(),
+        '예약자': document.getElementById('inputName').value.trim()
+      };
+      showCompleteScreen(completeData);
       showToast('예약이 완료되었습니다!', 'success');
     } else {
       showToast(res.error || '예약에 실패했습니다.', 'error');

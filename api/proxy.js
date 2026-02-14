@@ -243,11 +243,18 @@ async function supabaseRequest(config, method, table, queryParams, body) {
     throw new Error('Supabase request failed: ' + table + ' (' + res.status + ') ' + text);
   }
 
+  const raw = await res.text();
+  if (!raw) return null;
+
   const ct = res.headers.get('content-type') || '';
   if (ct.includes('application/json')) {
-    return res.json();
+    try {
+      return JSON.parse(raw);
+    } catch (e) {
+      return null;
+    }
   }
-  return null;
+  return raw;
 }
 
 async function supabaseSelect(config, table, queryParams) {
@@ -493,7 +500,23 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
       password_hash: hashPassword(password)
     }]);
 
-    return { handled: true, status: 200, body: { success: true, message: '예약이 완료되었습니다.', reservationId: id } };
+    return {
+      handled: true,
+      status: 200,
+      body: {
+        success: true,
+        data: {
+          '예약ID': id,
+          '날짜': safeDate,
+          '층': safeFloor,
+          '시작시간': safeStart,
+          '종료시간': safeEnd,
+          '팀명': safeTeamName,
+          '예약자': safeUserName
+        },
+        message: '예약이 완료되었습니다.'
+      }
+    };
   }
 
   if (action === 'verifyPassword') {
