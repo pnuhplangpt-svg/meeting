@@ -1952,6 +1952,8 @@ function renderAdminMetricsTrend(data) {
   var createSeries = series.reservationCreate || [];
   var failSeries = series.authFail || [];
   var avgSeries = series.authFailMovingAvg7 || [];
+  var anomalies = (data && data.anomalies) || {};
+  var anomalyMessages = Array.isArray(anomalies.messages) ? anomalies.messages : [];
 
   if (!days.length) {
     wrap.innerHTML = '<div class="admin-check-item warn"><div class="label">no-data</div><div class="detail">추이 데이터가 없습니다.</div></div>';
@@ -1959,7 +1961,18 @@ function renderAdminMetricsTrend(data) {
   }
 
   var start = Math.max(0, days.length - 7);
-  var html = '<div class="admin-trend-head">최근 7일 추이 (인증실패 7일 이동평균)</div>';
+  var html = '';
+  if (anomalyMessages.length > 0) {
+    html += '<div class="admin-anomaly-box warn">' +
+      '<div class="h">이상치 경고</div>' +
+      '<ul>' + anomalyMessages.map(function(msg) {
+        return '<li>' + escapeHtml(String(msg)) + '</li>';
+      }).join('') + '</ul>' +
+    '</div>';
+  } else {
+    html += '<div class="admin-anomaly-box ok"><div class="h">이상치 탐지</div><div class="d">최근 구간에서 연속 증가/급증 패턴이 감지되지 않았습니다.</div></div>';
+  }
+  html += '<div class="admin-trend-head">최근 7일 추이 (인증실패 7일 이동평균)</div>';
   html += '<div class="admin-trend-grid">';
   for (var i = start; i < days.length; i++) {
     html += '<div class="admin-trend-row">' +
