@@ -252,6 +252,7 @@
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             새로고침
           </button>
+          <button class="btn btn-outline" id="btnAdminChecks">운영 점검</button>
           <button class="btn btn-outline-red" id="btnAdminDeletePast">
             <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
             지난 예약 정리
@@ -296,6 +297,39 @@
       <div class="btn-group">
         <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminAuth">취소</button>
         <button class="btn btn-primary" style="flex:2" id="btnVerifyAdminCode">접속</button>
+      </div>
+    </div>
+  </div>
+
+
+  <!-- ════════ 관리자 회의실 수정 모달 ════════ -->
+  <div class="modal-overlay" id="modalAdminRoomEdit">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h3>회의실 정보 수정</h3>
+      <p id="adminRoomEditDesc" style="text-align:center; color:var(--gray-text); font-size:14px; margin-bottom:16px;"></p>
+      <div class="input-group">
+        <label for="adminRoomEditName">회의실 이름</label>
+        <input type="text" id="adminRoomEditName" placeholder="회의실 이름" maxlength="30" autocomplete="off">
+      </div>
+      <div class="btn-group">
+        <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminRoomEdit">취소</button>
+        <button class="btn btn-primary" style="flex:2" id="adminRoomEditConfirmBtn">저장</button>
+      </div>
+    </div>
+  </div>
+
+
+
+  <!-- ════════ 관리자 운영 점검 모달 ════════ -->
+  <div class="modal-overlay" id="modalAdminChecks">
+    <div class="modal">
+      <div class="modal-handle"></div>
+      <h3>운영 점검 결과</h3>
+      <div id="adminChecksSummary" class="admin-checks-summary"></div>
+      <div id="adminChecksList" class="admin-checks-list"></div>
+      <div class="btn-group">
+        <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminChecks">닫기</button>
       </div>
     </div>
   </div>

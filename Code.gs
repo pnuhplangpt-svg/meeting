@@ -6,7 +6,6 @@
 // ─── 설정 ───────────────────────────────────────────────
 const SHEET_NAME = '예약';
 const ROOM_SHEET_NAME = '회의실';
-
 const AUDIT_SHEET_NAME = 'Audit';
 const LEGACY_ADMIN_CODE = '041082'; // 마이그레이션용 fallback (운영 시 Script Property 사용 권장)
 
@@ -20,7 +19,6 @@ const AUTH_LOCK_SECONDS = 60 * 15; // 15분
 
 const PROP_ADMIN_CODE = 'ADMIN_CODE';
 const PROP_PASSWORD_PEPPER = 'PASSWORD_PEPPER';
-
 const ALERT_WINDOW_MINUTES = 60;
 const RESERVATION_LOCK_WAIT_MS = 5000;
 
@@ -231,6 +229,26 @@ function normalizeTimeValue(value) {
   return String(value);
 }
 
+function normalizeFloorValue(value) {
+  return String(value || '').trim().toUpperCase();
+}
+
+function isReservableRoom(floor) {
+  const target = normalizeFloorValue(floor);
+  if (!target) return false;
+
+  const sheet = getRoomSheet();
+  const data = sheet.getDataRange().getValues();
+  const rows = data.slice(1);
+
+  for (let i = 0; i < rows.length; i++) {
+    const rowFloor = normalizeFloorValue(rows[i][1]);
+    const active = String(rows[i][3]).toUpperCase() === 'TRUE';
+    if (rowFloor === target && active) return true;
+  }
+  return false;
+}
+
 function isValidDateString(value) {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value || ''));
 }
@@ -331,6 +349,46 @@ function getSecurityAlerts(params) {
   });
 }
 
+
+function getOperationalChecks(params) {
+  const adminToken = params && params.adminToken ? params.adminToken : '';
+  const adminCheck = verifyAdminToken(adminToken);
+  if (!adminCheck.ok) {
+    return jsonResponse({ success: false, error: '관리자 권한이 필요합니다.' });
+  }
+
+  const checks = [];
+
+  const adminCodeConfigured = (getScriptProperties().getProperty(PROP_ADMIN_CODE) || '').trim().length > 0;
+  checks.push({ key: 'adminCode', ok: adminCodeConfigured, detail: adminCodeConfigured ? 'ADMIN_CODE 설정됨' : 'ADMIN_CODE 미설정(legacy fallback 사용 중)' });
+
+  const pepperConfigured = (getScriptProperties().getProperty(PROP_PASSWORD_PEPPER) || '').trim().length > 0;
+  checks.push({ key: 'passwordPepper', ok: pepperConfigured, detail: pepperConfigured ? 'PASSWORD_PEPPER 설정됨' : 'PASSWORD_PEPPER 미설정' });
+
+  const roomData = getRoomSheet().getDataRange().getValues().slice(1);
+  const activeRooms = roomData.filter(function(row) { return String(row[3]).toUpperCase() === 'TRUE'; }).length;
+  checks.push({ key: 'activeRooms', ok: activeRooms > 0, detail: '활성 회의실 ' + activeRooms + '개' });
+
+  const reservationRows = getSheet().getDataRange().getValues().slice(1);
+  let invalidRoomRefs = 0;
+  reservationRows.forEach(function(row) {
+    if (!isReservableRoom(row[2])) invalidRoomRefs++;
+  });
+  checks.push({ key: 'reservationRoomRef', ok: invalidRoomRefs === 0, detail: invalidRoomRefs === 0 ? '예약-회의실 참조 정상' : ('유효하지 않은 회의실 참조 예약 ' + invalidRoomRefs + '건') });
+
+  const okCount = checks.filter(function(c) { return c.ok; }).length;
+  return jsonResponse({
+    success: true,
+    data: {
+      total: checks.length,
+      okCount: okCount,
+      failCount: checks.length - okCount,
+      checks: checks,
+      allOk: okCount === checks.length
+    }
+  });
+}
+
 function doGet(e) {
   const params = e && e.parameter ? e.parameter : {};
   const action = params.action || 'getReservations';
@@ -342,11 +400,13 @@ function doGet(e) {
       case 'getReservationById':
         return getReservationById(params);
       case 'getRooms':
-        return getRooms();
+        return getRooms(params);
       case 'verifyAdmin':
         return verifyAdmin(params);
       case 'getSecurityAlerts':
         return getSecurityAlerts(params);
+      case 'getOperationalChecks':
+        return getOperationalChecks(params);
       default:
         return jsonResponse({ success: false, error: '알 수 없는 액션입니다.' });
     }
@@ -421,8 +481,9 @@ function getReservations(params) {
   }
 
   if (params.floor) {
+    const targetFloor = normalizeFloorValue(params.floor);
     results = results.filter(function(r) {
-      return String(r['층']) === String(params.floor);
+      return normalizeFloorValue(r['층']) === targetFloor;
     });
   }
 
@@ -467,9 +528,10 @@ function getReservationById(params) {
 // ─── 예약 생성 ──────────────────────────────────────────
 function createReservation(body) {
   const { date, floor, startTime, endTime, teamName, userName, password } = body;
+
   const safeTeamName = sanitizeText(teamName, 30);
   const safeUserName = sanitizeText(userName, 20);
-  const safeFloor = String(floor || '').trim();
+  const safeFloor = normalizeFloorValue(floor);
   const safeDate = normalizeDateValue(date);
   const safeStart = normalizeTimeValue(startTime);
   const safeEnd = normalizeTimeValue(endTime);
@@ -484,6 +546,10 @@ function createReservation(body) {
 
   if (!isValidTimeRange(safeStart, safeEnd)) {
     return jsonResponse({ success: false, error: '시간 범위가 올바르지 않습니다.' });
+  }
+
+  if (!isReservableRoom(safeFloor)) {
+    return jsonResponse({ success: false, error: '선택한 회의실은 예약할 수 없습니다.' });
   }
 
   if (!/^\d{4}$/.test(password)) {
@@ -527,7 +593,7 @@ function checkTimeConflict(date, floor, startTime, endTime, excludeId) {
   const rows = data.slice(1);
 
   const targetDate = normalizeDateValue(date);
-  const targetFloor = String(floor);
+  const targetFloor = normalizeFloorValue(floor);
   const targetStart = normalizeTimeValue(startTime);
   const targetEnd = normalizeTimeValue(endTime);
 
@@ -536,7 +602,7 @@ function checkTimeConflict(date, floor, startTime, endTime, excludeId) {
     if (excludeId && String(row[0]) === String(excludeId)) continue;
 
     const rowDate = normalizeDateValue(row[1]);
-    const rowFloor = String(row[2]);
+    const rowFloor = normalizeFloorValue(row[2]);
     if (rowDate !== targetDate || rowFloor !== targetFloor) continue;
 
     const existStart = normalizeTimeValue(row[3]);
@@ -585,9 +651,7 @@ function verifyPassword(body) {
   }
 
   recordAuthFailure('reservation', id);
-
   writeAudit('verifyPassword', 'fail', 'user', id, 'reservation not found');
-
   return jsonResponse({ success: false, error: '예약을 찾을 수 없습니다.' });
 }
 
@@ -612,12 +676,12 @@ function updateReservation(body) {
     for (let i = 0; i < rows.length; i++) {
       if (String(rows[i][0]) === String(id)) {
         const currentDate = normalizeDateValue(rows[i][1]);
-        const currentFloor = String(rows[i][2]);
+        const currentFloor = normalizeFloorValue(rows[i][2]);
         const currentStart = normalizeTimeValue(rows[i][3]);
         const currentEnd = normalizeTimeValue(rows[i][4]);
 
         const newDate = date ? normalizeDateValue(date) : currentDate;
-        const newFloor = floor ? String(floor).trim() : currentFloor;
+        const newFloor = floor ? normalizeFloorValue(floor) : currentFloor;
         const newStart = startTime ? normalizeTimeValue(startTime) : currentStart;
         const newEnd = endTime ? normalizeTimeValue(endTime) : currentEnd;
         const newTeamName = teamName !== undefined ? sanitizeText(teamName, 30) : String(rows[i][5]);
@@ -633,6 +697,10 @@ function updateReservation(body) {
 
         if (!newFloor || !newTeamName || !newUserName) {
           return jsonResponse({ success: false, error: '필수 값이 비어 있습니다.' });
+        }
+
+        if (!isReservableRoom(newFloor)) {
+          return jsonResponse({ success: false, error: '선택한 회의실은 예약할 수 없습니다.' });
         }
 
         const conflict = checkTimeConflict(newDate, newFloor, newStart, newEnd, id);
@@ -735,18 +803,26 @@ function verifyAdmin(params) {
 
   recordAuthFailure('admin', 'global');
   writeAudit('verifyAdmin', 'fail', 'admin', 'global', 'code mismatch');
-
   return jsonResponse({ success: false, error: '관리자 인증에 실패했습니다.' });
 }
 
 // ─── 회의실 조회 ────────────────────────────────────────
-function getRooms() {
+function getRooms(params) {
+  const includeInactive = params && String(params.includeInactive || '') === '1';
+
+  if (includeInactive) {
+    const adminCheck = verifyAdminToken(params.adminToken || '');
+    if (!adminCheck.ok) {
+      return jsonResponse({ success: false, error: '관리자 권한이 필요합니다.' });
+    }
+  }
+
   const sheet = getRoomSheet();
   const data = sheet.getDataRange().getValues();
   const headers = data[0];
   const rows = data.slice(1);
 
-  const results = rows.map(function(row) {
+  let results = rows.map(function(row) {
     let obj = {};
     headers.forEach(function(h, i) {
       obj[h] = row[i];
@@ -754,6 +830,12 @@ function getRooms() {
     obj['활성화'] = String(obj['활성화']).toUpperCase() === 'TRUE';
     return obj;
   });
+
+  if (!includeInactive) {
+    results = results.filter(function(room) {
+      return room['활성화'] === true;
+    });
+  }
 
   return jsonResponse({ success: true, data: results });
 }
@@ -781,7 +863,6 @@ function addRoom(body) {
   }
 
   sheet.appendRow([floor, floor, name, 'TRUE']);
-
   writeAudit('addRoom', 'success', 'admin', floor, name);
   return jsonResponse({ success: true, message: '회의실이 추가되었습니다.' });
 }
@@ -811,9 +892,7 @@ function updateRoom(body) {
       if (active !== undefined) {
         sheet.getRange(rowIndex, 4).setValue(active ? 'TRUE' : 'FALSE');
       }
-
       writeAudit('updateRoom', 'success', 'admin', roomId, (name !== undefined ? String(name) : '') + ' active=' + String(active));
-
       return jsonResponse({ success: true, message: '회의실이 수정되었습니다.' });
     }
   }
@@ -840,9 +919,7 @@ function deleteRoom(body) {
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][0]) === String(roomId)) {
       sheet.deleteRow(i + 2);
-
       writeAudit('deleteRoom', 'success', 'admin', roomId, '');
-
       return jsonResponse({ success: true, message: '회의실이 삭제되었습니다.' });
     }
   }

@@ -115,8 +115,11 @@ document.addEventListener('DOMContentLoaded', function() {
   initNetworkBanner();
   navigateTo('screenHome');
   initInstallBanner();
+
   registerServiceWorker();
 });
+
+
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -188,6 +191,9 @@ function bindUiActions() {
   var btnAdminDeletePast = byId('btnAdminDeletePast');
   if (btnAdminDeletePast) btnAdminDeletePast.addEventListener('click', adminDeletePast);
 
+  var btnAdminChecks = byId('btnAdminChecks');
+  if (btnAdminChecks) btnAdminChecks.addEventListener('click', adminRunChecks);
+
   var btnAdminAddRoom = byId('btnAdminAddRoom');
   if (btnAdminAddRoom) btnAdminAddRoom.addEventListener('click', adminAddRoom);
 
@@ -221,6 +227,7 @@ function bindUiActions() {
     if (action === 'request-delete') return requestDelete(el.dataset.id);
     if (action === 'admin-delete-one') return adminDeleteOne(el.dataset.id);
     if (action === 'admin-toggle-room') return adminToggleRoom(el.dataset.roomId, el.dataset.active === 'true');
+    if (action === 'admin-edit-room') return adminEditRoom(el.dataset.roomId);
     if (action === 'admin-remove-room') return adminRemoveRoom(el.dataset.roomId);
   });
 }
@@ -324,6 +331,7 @@ function resetAndGoHome() {
   setReservationPasswordMode(false);
   document.getElementById('reserveTitle').textContent = '예약하기';
   document.getElementById('reserveSubtitle').textContent = '회의실과 시간을 선택해주세요';
+
   navigateTo('screenHome');
 }
 
@@ -1032,6 +1040,7 @@ async function verifyAndEdit(id) {
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = '';
         setReservationPasswordMode(true);
+
         renderCalendar();
         await loadTimeSlots();
         showFormSection();
@@ -1170,7 +1179,6 @@ async function verifyAndDelete(id) {
           showToast('예약이 삭제되었습니다.', 'success');
           await loadReservations();
           renderReservations();
-
         } else {
           showToast(res.error || '삭제에 실패했습니다.', 'error');
         }
@@ -1179,7 +1187,6 @@ async function verifyAndDelete(id) {
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
       } finally {
         clearDeleteSummary();
-
       }
     };
   } catch (e) {
@@ -1204,7 +1211,6 @@ function closeModal(id) {
   if (id === 'modalDelete') {
     clearDeleteSummary();
   }
-
 }
 
 // 모달 바깥 클릭 시 닫기
@@ -1334,14 +1340,16 @@ var displayFloor = null;
 var displayTimer = null;
 var displayClockTimer = null;
 var displayWakeLock = null;
-var DISPLAY_REFRESH_INTERVAL = 60000; // 60초마다 서버 데이터 갱신
+var DISPLAY_REFRESH_INTERVAL = 60000; // 기본 60초
+var DISPLAY_REFRESH_MAX_INTERVAL = 5 * 60000; // 실패 시 최대 5분 backoff
+var displayFailureCount = 0;
 var displayRoomNameCache = null;
 var displayRoomNameCacheAt = 0;
 var DISPLAY_ROOMS_CACHE_TTL = 10 * 60 * 1000; // 10분
 
 function initDisplayMode() {
   var params = new URLSearchParams(window.location.search);
-  var floor = params.get('display');
+  var floor = (params.get('display') || '').trim().toUpperCase();
   if (!floor) return false;
 
   displayFloor = floor;
@@ -1365,11 +1373,8 @@ function initDisplayMode() {
   updateDisplayClock();
   displayClockTimer = setInterval(updateDisplayClock, 1000);
 
-  // 첫 데이터 로드
-  loadDisplayData();
-
-  // 주기적 데이터 갱신 (60초)
-  displayTimer = setInterval(loadDisplayData, DISPLAY_REFRESH_INTERVAL);
+  // 첫 데이터 로드 + 적응형 주기 갱신
+  scheduleNextDisplayLoad(0);
 
   // 화면 꺼짐 방지
   requestWakeLock();
@@ -1383,7 +1388,7 @@ function initDisplayMode() {
   // 탭 비활성→활성 복귀 시 즉시 갱신 + Wake Lock 재요청
   document.addEventListener('visibilitychange', function() {
     if (!document.hidden && displayFloor) {
-      loadDisplayData();
+      scheduleNextDisplayLoad(0);
       requestWakeLock();
     }
   });
@@ -1414,8 +1419,37 @@ function updateDisplayClock() {
   }
 }
 
+function getDisplayBackoffIntervalMs() {
+  if (displayFailureCount <= 0) return DISPLAY_REFRESH_INTERVAL;
+  var next = DISPLAY_REFRESH_INTERVAL * Math.pow(2, Math.min(displayFailureCount, 4));
+  return Math.min(DISPLAY_REFRESH_MAX_INTERVAL, next);
+}
+
+function scheduleNextDisplayLoad(delayMs) {
+  if (displayTimer) {
+    clearTimeout(displayTimer);
+  }
+  displayTimer = setTimeout(loadDisplayData, Math.max(0, delayMs || 0));
+}
+
+function renderDisplayUnavailable(message) {
+  var status = document.getElementById('displayStatus');
+  if (!status) return;
+  status.className = 'display-panel-status state-unavailable';
+  status.innerHTML =
+    '<span class="dp-state-badge" style="background:#fff3cd;color:#8a6d3b;border-color:#ffe49b;">● 확인 필요</span>' +
+    '<div class="dp-state-text" style="color:#8a6d3b;">' + escapeHtml(message) + '</div>' +
+    '<div class="dp-next" style="margin-top:12px;">관리자에서 회의실 활성 상태를 확인해주세요.</div>';
+
+  var timeline = document.getElementById('displayTimeline');
+  if (timeline) {
+    timeline.innerHTML = '<div class="ds-row empty" style="min-height:64px"><div class="ds-row-time">-</div><div class="ds-row-content">표시할 일정이 없습니다.</div></div>';
+  }
+}
+
 async function loadDisplayData() {
   var today = formatDate(new Date());
+  var nextIntervalMs = DISPLAY_REFRESH_INTERVAL;
 
   try {
     var res = await apiGet('getReservations', {
@@ -1423,7 +1457,7 @@ async function loadDisplayData() {
       floor: displayFloor
     });
 
-    // 층 이름 캐시(10분 TTL)
+    // 층 이름 캐시(10분 TTL) + 활성 여부 검증
     try {
       var nowTs = Date.now();
       if (!displayRoomNameCache || (nowTs - displayRoomNameCacheAt) > DISPLAY_ROOMS_CACHE_TTL) {
@@ -1435,11 +1469,13 @@ async function loadDisplayData() {
       }
       if (displayRoomNameCache) {
         var room = displayRoomNameCache.find(function(r) {
-          return r['층'] === displayFloor;
+          return String(r['층']) === String(displayFloor);
         });
         if (room) {
           document.getElementById('displayFloorName').textContent =
             room['층'] + ' ' + room['이름'];
+        } else {
+          renderDisplayUnavailable(displayFloor + ' 회의실이 비활성 상태이거나 존재하지 않습니다.');
         }
       }
     } catch (e) {}
@@ -1457,16 +1493,23 @@ async function loadDisplayData() {
       renderDisplaySchedule(reservations);
     }
 
-    // 갱신 시각 표시
+    displayFailureCount = 0;
+    nextIntervalMs = getDisplayBackoffIntervalMs();
+
     var now = new Date();
     document.getElementById('displayRefreshInfo').textContent =
       '마지막 갱신 ' + String(now.getHours()).padStart(2, '0') + ':' +
       String(now.getMinutes()).padStart(2, '0') + ':' +
       String(now.getSeconds()).padStart(2, '0') +
-      ' · 자동 갱신 ' + (DISPLAY_REFRESH_INTERVAL / 1000) + '초';
+      ' · 자동 갱신 ' + Math.round(nextIntervalMs / 1000) + '초';
 
   } catch (e) {
-    document.getElementById('displayRefreshInfo').textContent = '서버 연결 실패 · 재시도 중...';
+    displayFailureCount += 1;
+    nextIntervalMs = getDisplayBackoffIntervalMs();
+    document.getElementById('displayRefreshInfo').textContent =
+      '서버 연결 실패 · ' + Math.round(nextIntervalMs / 1000) + '초 후 재시도';
+  } finally {
+    scheduleNextDisplayLoad(nextIntervalMs);
   }
 }
 
@@ -1476,7 +1519,6 @@ function renderDisplayStatus(reservations) {
   var currentTime = String(now.getHours()).padStart(2, '0') + ':' +
     String(now.getMinutes()).padStart(2, '0');
 
-  // 현재 진행 중인 회의 찾기
   var current = null;
   for (var i = 0; i < reservations.length; i++) {
     if (currentTime >= reservations[i]['시작시간'] && currentTime < reservations[i]['종료시간']) {
@@ -1485,7 +1527,6 @@ function renderDisplayStatus(reservations) {
     }
   }
 
-  // 다음 예약 찾기
   var next = null;
   for (var j = 0; j < reservations.length; j++) {
     if (reservations[j]['시작시간'] > currentTime) {
@@ -1494,7 +1535,6 @@ function renderDisplayStatus(reservations) {
     }
   }
 
-  // 상태 클래스 설정
   container.className = 'display-panel-status';
 
   var html = '';
@@ -1504,61 +1544,67 @@ function renderDisplayStatus(reservations) {
 
     html +=
       '<span class="dp-state-badge inuse">● 사용 중</span>' +
-      '<div class="dp-time-range">' + escapeHtml(current['시작시간']) + ' ~ ' + escapeHtml(current['종료시간']) + '</div>' +
+      '<div class="dp-time-range">현재 시간 ' + escapeHtml(currentTime) + '</div>' +
       '<div class="dp-state-text inuse">사용 중</div>' +
       '<div class="dp-meeting-info">' +
-        '<div class="dp-meeting-team">' + escapeHtml(current['팀명']) + '</div>' +
-        '<div class="dp-meeting-user">' + escapeHtml(current['예약자']) + '</div>' +
+        '<div class="dp-field"><span class="k">팀명</span><span class="v dp-meeting-team">' + escapeHtml(current['팀명']) + '</span></div>' +
+        '<div class="dp-field"><span class="k">예약자</span><span class="v dp-meeting-user">' + escapeHtml(current['예약자']) + '</span></div>' +
+        '<div class="dp-field"><span class="k">시간</span><span class="v dp-meeting-time">' + escapeHtml(current['시작시간']) + ' ~ ' + escapeHtml(current['종료시간']) + '</span></div>' +
       '</div>';
 
     if (next) {
-      html += '<div class="dp-next">다음: <strong>' +
-        escapeHtml(next['시작시간']) + '</strong> ' + escapeHtml(next['팀명']) + '</div>';
+      var diff = parseTimeToMinutes(next['시작시간']) - parseTimeToMinutes(currentTime);
+      html +=
+        '<div class="dp-next">' +
+          '<div class="dp-next-title">다음 예약</div>' +
+          '<strong>' + escapeHtml(next['시작시간']) + ' ~ ' + escapeHtml(next['종료시간']) + '</strong><br>' +
+          escapeHtml(next['팀명']) + ' · ' + escapeHtml(formatDiffLabel(diff)) +
+        '</div>';
+    } else {
+      html +=
+        '<div class="dp-next">' +
+          '<div class="dp-next-title">다음 예약</div>' +
+          '오늘 남은 예약이 없습니다.' +
+        '</div>';
     }
   } else if (next) {
-    var nowMin = now.getHours() * 60 + now.getMinutes();
-    var nextParts = next['시작시간'].split(':');
-    var nextMin = parseInt(nextParts[0]) * 60 + parseInt(nextParts[1]);
-    var diffMin = nextMin - nowMin;
+    var diffMin = parseTimeToMinutes(next['시작시간']) - parseTimeToMinutes(currentTime);
 
-    if (diffMin <= 30 && diffMin > 0) {
+    if (diffMin <= 30) {
       container.classList.add('state-soon');
       html +=
         '<span class="dp-state-badge soon">● 곧 시작</span>' +
+        '<div class="dp-time-range">현재 시간 ' + escapeHtml(currentTime) + '</div>' +
         '<div class="dp-state-text" style="color:#f5a623;">곧 시작</div>' +
         '<div class="dp-meeting-info">' +
-          '<div class="dp-meeting-team">' + escapeHtml(next['팀명']) + '</div>' +
-          '<div class="dp-meeting-user">' + escapeHtml(next['예약자']) + '</div>' +
-          '<div class="dp-meeting-time">' + escapeHtml(next['시작시간']) + ' ~ ' + escapeHtml(next['종료시간']) +
-            ' (' + diffMin + '분 후)</div>' +
+          '<div class="dp-field"><span class="k">팀명</span><span class="v dp-meeting-team">' + escapeHtml(next['팀명']) + '</span></div>' +
+          '<div class="dp-field"><span class="k">예약자</span><span class="v dp-meeting-user">' + escapeHtml(next['예약자']) + '</span></div>' +
+          '<div class="dp-field"><span class="k">시간</span><span class="v dp-meeting-time">' + escapeHtml(next['시작시간']) + ' ~ ' + escapeHtml(next['종료시간']) + ' (' + diffMin + '분 후)</span></div>' +
         '</div>';
     } else {
       container.classList.add('state-available');
-
-      var diffStr = '';
-      if (diffMin >= 60) {
-        diffStr = Math.floor(diffMin / 60) + '시간 ' + (diffMin % 60) + '분 후';
-      } else {
-        diffStr = diffMin + '분 후';
-      }
-
       html +=
         '<span class="dp-state-badge available">● 사용 가능</span>' +
+        '<div class="dp-time-range">현재 시간 ' + escapeHtml(currentTime) + '</div>' +
         '<div class="dp-state-text available">사용 가능</div>' +
         '<div class="dp-next" style="margin-top:16px;">' +
-          '다음 예약: <strong>' + escapeHtml(next['시작시간']) + ' ~ ' + escapeHtml(next['종료시간']) + '</strong><br>' +
-          escapeHtml(next['팀명']) + ' · ' + escapeHtml(diffStr) +
+          '<div class="dp-next-title">다음 예약</div>' +
+          '<strong>' + escapeHtml(next['시작시간']) + ' ~ ' + escapeHtml(next['종료시간']) + '</strong><br>' +
+          escapeHtml(next['팀명']) + ' · ' + escapeHtml(formatDiffLabel(diffMin)) +
         '</div>';
     }
   } else {
     container.classList.add('state-available');
     html +=
       '<span class="dp-state-badge available">● 사용 가능</span>' +
+      '<div class="dp-time-range">현재 시간 ' + escapeHtml(currentTime) + '</div>' +
       '<div class="dp-state-text available">사용 가능</div>' +
-      '<div class="dp-next" style="margin-top:16px;">오늘 남은 예약이 없습니다</div>';
+      '<div class="dp-next" style="margin-top:16px;">' +
+        '<div class="dp-next-title">오늘 일정</div>' +
+        '오늘 남은 예약이 없습니다' +
+      '</div>';
   }
 
-  // QR 코드 영역 추가 (예약 앱 바로가기)
   var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '');
 
   html +=
@@ -1569,7 +1615,6 @@ function renderDisplayStatus(reservations) {
 
   container.innerHTML = html;
 
-  // ✅ QR 생성 (외부 API 호출 없음)
   var qrEl = document.getElementById('dpQrCode');
   if (qrEl && window.QRCode) {
     qrEl.innerHTML = '';
@@ -1584,7 +1629,6 @@ function renderDisplayStatus(reservations) {
   }
 }
 
-
 function parseTimeToMinutes(timeStr) {
   if (!timeStr || timeStr.indexOf(':') === -1) return 0;
   var parts = timeStr.split(':');
@@ -1596,6 +1640,14 @@ function formatMinutesToTime(min) {
   var h = Math.floor(normalized / 60);
   var m = normalized % 60;
   return String(h).padStart(2, '0') + ':' + String(m).padStart(2, '0');
+}
+
+function formatDiffLabel(diffMin) {
+  if (diffMin <= 0) return '곧 시작';
+  if (diffMin >= 60) {
+    return Math.floor(diffMin / 60) + '시간 ' + (diffMin % 60) + '분 후';
+  }
+  return diffMin + '분 후';
 }
 
 function ceilToHour(min) {
@@ -1618,6 +1670,11 @@ function scrollToCurrentTime(container) {
 function renderDisplaySchedule(reservations) {
   var container = document.getElementById('displayTimeline');
   if (!container) return;
+
+  var header = document.querySelector('.ds-timeline-header');
+  if (header) {
+    header.textContent = '오늘 일정 · ' + String((reservations || []).length) + '건';
+  }
 
   var OPEN_MIN = 7 * 60;
   var CLOSE_MIN = 21 * 60;
@@ -1845,6 +1902,40 @@ function exitAdminMode() {
   navigateTo('screenHome');
 }
 
+async function adminRunChecks() {
+  showLoading(true);
+  try {
+    var res = await apiGet('getOperationalChecks', { adminToken: adminAuthToken });
+    showLoading(false);
+
+    if (!res.success) {
+      showToast(res.error || '운영 점검에 실패했습니다.', 'error');
+      return;
+    }
+
+    var data = res.data || {};
+    var summary = document.getElementById('adminChecksSummary');
+    var list = document.getElementById('adminChecksList');
+    if (!summary || !list) return;
+
+    summary.textContent = '총 ' + Number(data.total || 0) + '개 항목 · 정상 ' + Number(data.okCount || 0) + ' · 경고 ' + Number(data.failCount || 0);
+
+    var html = '';
+    (data.checks || []).forEach(function(c) {
+      html += '<div class="admin-check-item ' + (c.ok ? 'ok' : 'warn') + '">' +
+        '<div class="label">' + escapeHtml(String(c.key || 'check')) + '</div>' +
+        '<div class="detail">' + escapeHtml(String(c.detail || '')) + '</div>' +
+      '</div>';
+    });
+    list.innerHTML = html || '<div class="admin-check-item warn"><div class="label">no-data</div><div class="detail">점검 데이터가 없습니다.</div></div>';
+
+    openModal('modalAdminChecks');
+  } catch (e) {
+    showLoading(false);
+    showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+  }
+}
+
 async function adminRefresh() {
   showLoading(true);
   var list = document.getElementById('adminReservationsList');
@@ -1877,6 +1968,8 @@ async function adminRefresh() {
   }
 }
 
+
+
 async function loadAdminSecurityAlerts() {
   if (!adminAuthToken) {
     adminSecurityAlerts = null;
@@ -1901,6 +1994,7 @@ function renderAdminStats() {
   var todayCount = adminReservations.filter(function(r) { return r['날짜'] === today; }).length;
   var upcoming = adminReservations.filter(function(r) { return r['날짜'] >= today; }).length;
   var past = adminReservations.filter(function(r) { return r['날짜'] < today; }).length;
+
   var html =
     '<div class="admin-stat-card"><div class="stat-num">' + total + '</div><div class="stat-label">전체 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + todayCount + '</div><div class="stat-label">오늘 예약</div></div>' +
@@ -2095,7 +2189,10 @@ async function loadAdminRooms() {
   list.innerHTML = '<div style="text-align:center; padding:20px 0;"><div class="spinner" style="margin:0 auto;"></div></div>';
 
   try {
-    var res = await apiGet('getRooms', {});
+    var res = await apiGet('getRooms', {
+      includeInactive: '1',
+      adminToken: adminAuthToken
+    });
     if (res.success) {
       adminRooms = res.data || [];
       renderAdminRooms();
@@ -2132,6 +2229,7 @@ function renderAdminRooms() {
           '<button class="room-toggle-btn ' + (isActive ? 'deactivate' : 'activate') + '" data-action="admin-toggle-room" data-room-id="' + escapeHtml(room['회의실ID']) + '" data-active="' + (!isActive) + '">' +
             (isActive ? '비활성화' : '활성화') +
           '</button>' +
+          '<button class="room-edit-btn" data-action="admin-edit-room" data-room-id="' + escapeHtml(room['회의실ID']) + '">수정</button>' +
           '<button class="room-delete-btn" data-action="admin-remove-room" data-room-id="' + escapeHtml(room['회의실ID']) + '">' +
             '<svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>' +
           '</button>' +
@@ -2140,6 +2238,62 @@ function renderAdminRooms() {
   });
 
   list.innerHTML = html;
+}
+
+function getAdminRoomById(roomId) {
+  return adminRooms.find(function(room) {
+    return String(room['회의실ID']) === String(roomId);
+  }) || null;
+}
+
+async function syncRoomViewsAfterAdminChange() {
+  await loadAdminRooms();
+  // 사용자 홈 화면 층 카드도 즉시 최신화
+  await loadRoomsForHome();
+}
+
+function adminEditRoom(roomId) {
+  var room = getAdminRoomById(roomId);
+  if (!room) {
+    showToast('회의실 정보를 찾을 수 없습니다.', 'error');
+    return;
+  }
+
+  document.getElementById('adminRoomEditDesc').textContent = room['층'] + ' / ' + room['회의실ID'];
+  document.getElementById('adminRoomEditName').value = String(room['이름'] || '');
+  openModal('modalAdminRoomEdit');
+
+  document.getElementById('adminRoomEditConfirmBtn').onclick = async function() {
+    var name = document.getElementById('adminRoomEditName').value.trim();
+    if (!name) {
+      showToast('회의실 이름을 입력하세요.', 'error');
+      return;
+    }
+
+    closeModal('modalAdminRoomEdit');
+    showLoading(true);
+
+    try {
+      var res = await apiPost({
+        action: 'updateRoom',
+        adminToken: adminAuthToken,
+        roomId: roomId,
+        name: name
+      });
+
+      showLoading(false);
+
+      if (res.success) {
+        showToast('회의실 정보가 수정되었습니다.', 'success');
+        await syncRoomViewsAfterAdminChange();
+      } else {
+        showToast(res.error || '수정에 실패했습니다.', 'error');
+      }
+    } catch (e) {
+      showLoading(false);
+      showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    }
+  };
 }
 
 async function adminToggleRoom(roomId, active) {
@@ -2157,7 +2311,7 @@ async function adminToggleRoom(roomId, active) {
 
     if (res.success) {
       showToast(active ? '회의실이 활성화되었습니다.' : '회의실이 비활성화되었습니다.', 'success');
-      loadAdminRooms();
+      await syncRoomViewsAfterAdminChange();
     } else {
       showToast(res.error || '변경에 실패했습니다.', 'error');
     }
@@ -2168,7 +2322,7 @@ async function adminToggleRoom(roomId, active) {
 }
 
 async function adminAddRoom() {
-  var floor = document.getElementById('newRoomFloor').value.trim();
+  var floor = document.getElementById('newRoomFloor').value.trim().toUpperCase();
   var name = document.getElementById('newRoomName').value.trim();
 
   if (!floor || !name) {
@@ -2192,7 +2346,7 @@ async function adminAddRoom() {
       showToast('회의실이 추가되었습니다.', 'success');
       document.getElementById('newRoomFloor').value = '';
       document.getElementById('newRoomName').value = '';
-      loadAdminRooms();
+      await syncRoomViewsAfterAdminChange();
     } else {
       showToast(res.error || '추가에 실패했습니다.', 'error');
     }
@@ -2223,7 +2377,7 @@ function adminRemoveRoom(roomId) {
 
       if (res.success) {
         showToast('회의실이 삭제되었습니다.', 'success');
-        loadAdminRooms();
+        await syncRoomViewsAfterAdminChange();
       } else {
         showToast(res.error || '삭제에 실패했습니다.', 'error');
       }

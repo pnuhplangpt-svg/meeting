@@ -4,7 +4,7 @@
 - Starts a local static file server.
 - Opens the app in Playwright (Firefox).
 - Mocks Apps Script API responses in-page via fetch patching.
-- Verifies create/edit/delete/admin flows and key invariants.
+- Verifies create/edit/delete/admin flows, plus boundary rules (duplicate slot and inactive room rejection).
 """
 
 from __future__ import annotations
@@ -102,11 +102,23 @@ def main() -> int:
                     const body = JSON.parse((options && options.body) || '{}');
                     const action = body.action || '';
                     if (action === 'createReservation') {
+                      const floor = String(body.floor || '').trim().toUpperCase();
+                      const room = rooms.find(r => String(r['층']).toUpperCase() === floor && r['활성화'] === true);
+                      if (!room) return mk({ success: false, error: '선택한 회의실은 예약할 수 없습니다.' });
+
+                      const hasConflict = reservations.some(r =>
+                        r['날짜'] === body.date &&
+                        String(r['층']).toUpperCase() === floor &&
+                        String(body.startTime) < String(r['종료시간']) &&
+                        String(body.endTime) > String(r['시작시간'])
+                      );
+                      if (hasConflict) return mk({ success: false, error: '해당 시간에 이미 예약이 있습니다.' });
+
                       const id = 'id' + (reservations.length + 1);
                       reservations.push({
                         '예약ID': id,
                         '날짜': body.date,
-                        '층': body.floor,
+                        '층': floor,
                         '시작시간': body.startTime,
                         '종료시간': body.endTime,
                         '팀명': body.teamName,
@@ -169,6 +181,17 @@ def main() -> int:
                   await submitReservation();
                   out.afterCreate = window.__mockStore.reservations.length;
 
+                  // duplicate slot should be rejected (no new row)
+                  await submitReservation();
+                  out.afterDuplicateTry = window.__mockStore.reservations.length;
+
+                  // inactive room should be rejected (no new row)
+                  window.__mockStore.rooms.push({'회의실ID':'9F','층':'9F','이름':'비활성 회의실','활성화':false});
+                  state.selectedFloor = '9F';
+                  await submitReservation();
+                  out.afterInactiveRoomTry = window.__mockStore.reservations.length;
+                  state.selectedFloor = '6F';
+
                   await loadReservations();
                   const rid = window.__mockStore.reservations[0]['예약ID'];
 
@@ -209,6 +232,8 @@ def main() -> int:
         # Assertions
         assert result["roomsLoaded"] >= 1, "rooms failed to load"
         assert result["afterCreate"] == 1, "create flow failed"
+        assert result["afterDuplicateTry"] == 1, "duplicate slot rule failed"
+        assert result["afterInactiveRoomTry"] == 1, "inactive room rule failed"
         assert result["editModeId"] == "id1", "edit mode id not set"
         assert result["afterUpdateCount"] == 1, "update created extra row"
         assert result["afterUpdateTeam"] == "팀수정", "update did not persist data"
