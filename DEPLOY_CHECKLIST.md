@@ -26,6 +26,9 @@
 - [ ] Apps Script `Script Properties`에 `PASSWORD_PEPPER` 설정 확인
 - [ ] 관리자 코드 교체/보호 정책 확인(문서 기준)
 - [ ] `SECRETS_RUNBOOK.md` 최신 절차 기준으로 키 점검
+- [ ] Vercel 환경변수 `APPS_SCRIPT_URL` 설정/환경(prod, preview) 확인
+- [ ] Vercel 환경변수 `PROXY_SHARED_SECRET` 설정 확인
+- [ ] Apps Script `Script Properties`에 `PROXY_SHARED_SECRET` 동일값 설정 확인
 
 ### 1-3. 기능 회귀 점검
 - [ ] 신규 예약 생성
@@ -45,6 +48,8 @@
 ## 2. 배포 실행
 
 - [ ] 정적 파일 업로드/배포 완료
+- [ ] Vercel Function(`/api/proxy`) 정상 배포 확인
+- [ ] `/api/proxy` 과도 호출 시 429 rate-limit 동작 샘플 확인
 - [ ] Apps Script 새 버전 배포 완료
 - [ ] 배포 버전/시간 기록
 
