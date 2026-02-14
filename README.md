@@ -22,6 +22,8 @@ The test uses an in-page mocked API (`fetch` override), so it is deterministic a
 - See `OPERATIONS_ROADMAP.md` for a phased hardening/operations plan (1-week / 2-week / 4-week).
 - Start execution with `DEPLOY_CHECKLIST.md` (Priority 1 deployment checklist).
 - For secrets/process control, follow `SECRETS_RUNBOOK.md` (Priority 1-2).
+- Supabase migration kickoff docs: `docs/SUPABASE_PHASE_A_PLAN.md` (Phase A design/prep).
+- Supabase migration execution (Phase B): `docs/SUPABASE_PHASE_B_EXECUTION.md` (solo-friendly runbook).
 
 ## Audit logging
 
@@ -47,6 +49,42 @@ Operational metrics now support report preview/send for admins.
 - `GET action=getOperationalMetricsTrend&adminToken=...`: returns 30-day daily trend + 7-day moving average for auth failures
 - `POST action=sendOperationalMetricsReport`: sends report email immediately (admin token required)
 - `runScheduledOperationalMetricsReport()`: trigger-safe function for time-based automatic sending
+
+
+## Vercel Function proxy (Step 1)
+
+To hide direct Apps Script endpoint usage from the browser, the frontend now calls `/api/proxy` and Vercel forwards requests to Apps Script server-side.
+
+Required Vercel environment variables:
+
+- `APPS_SCRIPT_URL`: deployed Google Apps Script Web App URL (`.../exec`)
+- `PROXY_SHARED_SECRET`: long random secret shared with Apps Script Script Property `PROXY_SHARED_SECRET`
+- `SUPABASE_READ_ENABLED`: `true`일 때 `getRooms`(활성만), `getReservations`, `getReservationById`를 Supabase에서 조회
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (server only)
+- `SUPABASE_WRITE_ENABLED`: `true`일 때 예약 생성/인증/수정/취소를 Supabase로 처리
+- `PROXY_PASSWORD_PEPPER`: Apps Script `PASSWORD_PEPPER`와 동일 값 (비밀번호 해시 호환)
+- `PROXY_TOKEN_SECRET`: 프록시 예약 토큰 서명용 비밀키
+
+Example (local dev):
+
+```bash
+vercel env add APPS_SCRIPT_URL
+vercel env add PROXY_SHARED_SECRET
+```
+
+Phase 2 hardening now included in `api/proxy`:
+- GET/POST action allowlist enforcement
+- action-specific required parameter/field checks
+- per-IP+method basic rate limiting (60 req/min, best-effort in serverless runtime)
+- optional shared-secret forwarding to Apps Script (`proxySecret`)
+
+Phase B execution (solo mode):
+1. Supabase에 `sql/supabase_phase_a_schema.sql` 적용
+2. `python3 scripts/export_supabase_insert_sql.py` 실행 → 생성된 SQL을 Supabase SQL Editor에 붙여넣어 1차 이관 (또는 `scripts/migrate_sheets_to_supabase.py` 사용)
+3. Vercel env에 `SUPABASE_READ_ENABLED=true`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 설정
+4. 배포 후 조회 기능(getRooms/getReservations/getReservationById) 검증
+5. 문제 시 `SUPABASE_READ_ENABLED=false`로 즉시 롤백
 
 ## Playwright 환경 빠른 구축 (로컬 PC)
 
