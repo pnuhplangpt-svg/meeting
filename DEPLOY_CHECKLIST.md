@@ -28,6 +28,7 @@
 - [ ] `SECRETS_RUNBOOK.md` 최신 절차 기준으로 키 점검
 - [ ] Vercel 환경변수 `APPS_SCRIPT_URL` 설정/환경(prod, preview) 확인
 - [ ] Vercel 환경변수 `PROXY_SHARED_SECRET` 설정 확인
+- [ ] (선택) Supabase 읽기 전환 시 `SUPABASE_READ_ENABLED=true` 및 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 설정 확인
 - [ ] Apps Script `Script Properties`에 `PROXY_SHARED_SECRET` 동일값 설정 확인
 
 ### 1-3. 기능 회귀 점검
