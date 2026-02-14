@@ -6,6 +6,7 @@
 // ─── 설정 ───────────────────────────────────────────────
 const SHEET_NAME = '예약';
 const ROOM_SHEET_NAME = '회의실';
+
 const AUDIT_SHEET_NAME = 'Audit';
 const LEGACY_ADMIN_CODE = '041082'; // 마이그레이션용 fallback (운영 시 Script Property 사용 권장)
 
@@ -19,6 +20,7 @@ const AUTH_LOCK_SECONDS = 60 * 15; // 15분
 
 const PROP_ADMIN_CODE = 'ADMIN_CODE';
 const PROP_PASSWORD_PEPPER = 'PASSWORD_PEPPER';
+
 const ALERT_WINDOW_MINUTES = 60;
 const RESERVATION_LOCK_WAIT_MS = 5000;
 
@@ -37,8 +39,6 @@ function getSheet() {
   }
   return sheet;
 }
-
-
 
 function getAuditSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
@@ -274,7 +274,6 @@ function hashPassword(password) {
 
 // ─── GET 요청 핸들러 ────────────────────────────────────
 
-
 function getSecurityAlerts(params) {
   const adminToken = params && params.adminToken ? params.adminToken : '';
   const adminCheck = verifyAdminToken(adminToken);
@@ -468,7 +467,6 @@ function getReservationById(params) {
 // ─── 예약 생성 ──────────────────────────────────────────
 function createReservation(body) {
   const { date, floor, startTime, endTime, teamName, userName, password } = body;
-
   const safeTeamName = sanitizeText(teamName, 30);
   const safeUserName = sanitizeText(userName, 20);
   const safeFloor = String(floor || '').trim();
@@ -587,7 +585,9 @@ function verifyPassword(body) {
   }
 
   recordAuthFailure('reservation', id);
+
   writeAudit('verifyPassword', 'fail', 'user', id, 'reservation not found');
+
   return jsonResponse({ success: false, error: '예약을 찾을 수 없습니다.' });
 }
 
@@ -735,6 +735,7 @@ function verifyAdmin(params) {
 
   recordAuthFailure('admin', 'global');
   writeAudit('verifyAdmin', 'fail', 'admin', 'global', 'code mismatch');
+
   return jsonResponse({ success: false, error: '관리자 인증에 실패했습니다.' });
 }
 
@@ -780,6 +781,7 @@ function addRoom(body) {
   }
 
   sheet.appendRow([floor, floor, name, 'TRUE']);
+
   writeAudit('addRoom', 'success', 'admin', floor, name);
   return jsonResponse({ success: true, message: '회의실이 추가되었습니다.' });
 }
@@ -809,7 +811,9 @@ function updateRoom(body) {
       if (active !== undefined) {
         sheet.getRange(rowIndex, 4).setValue(active ? 'TRUE' : 'FALSE');
       }
+
       writeAudit('updateRoom', 'success', 'admin', roomId, (name !== undefined ? String(name) : '') + ' active=' + String(active));
+
       return jsonResponse({ success: true, message: '회의실이 수정되었습니다.' });
     }
   }
@@ -836,7 +840,9 @@ function deleteRoom(body) {
   for (let i = 0; i < rows.length; i++) {
     if (String(rows[i][0]) === String(roomId)) {
       sheet.deleteRow(i + 2);
+
       writeAudit('deleteRoom', 'success', 'admin', roomId, '');
+
       return jsonResponse({ success: true, message: '회의실이 삭제되었습니다.' });
     }
   }

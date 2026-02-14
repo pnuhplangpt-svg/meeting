@@ -115,11 +115,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initNetworkBanner();
   navigateTo('screenHome');
   initInstallBanner();
-
   registerServiceWorker();
 });
-
-
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -327,7 +324,6 @@ function resetAndGoHome() {
   setReservationPasswordMode(false);
   document.getElementById('reserveTitle').textContent = '예약하기';
   document.getElementById('reserveSubtitle').textContent = '회의실과 시간을 선택해주세요';
-
   navigateTo('screenHome');
 }
 
@@ -1036,7 +1032,6 @@ async function verifyAndEdit(id) {
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = '';
         setReservationPasswordMode(true);
-
         renderCalendar();
         await loadTimeSlots();
         showFormSection();
@@ -1175,6 +1170,7 @@ async function verifyAndDelete(id) {
           showToast('예약이 삭제되었습니다.', 'success');
           await loadReservations();
           renderReservations();
+
         } else {
           showToast(res.error || '삭제에 실패했습니다.', 'error');
         }
@@ -1183,6 +1179,7 @@ async function verifyAndDelete(id) {
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
       } finally {
         clearDeleteSummary();
+
       }
     };
   } catch (e) {
@@ -1207,6 +1204,7 @@ function closeModal(id) {
   if (id === 'modalDelete') {
     clearDeleteSummary();
   }
+
 }
 
 // 모달 바깥 클릭 시 닫기
@@ -1879,8 +1877,6 @@ async function adminRefresh() {
   }
 }
 
-
-
 async function loadAdminSecurityAlerts() {
   if (!adminAuthToken) {
     adminSecurityAlerts = null;
@@ -1905,7 +1901,6 @@ function renderAdminStats() {
   var todayCount = adminReservations.filter(function(r) { return r['날짜'] === today; }).length;
   var upcoming = adminReservations.filter(function(r) { return r['날짜'] >= today; }).length;
   var past = adminReservations.filter(function(r) { return r['날짜'] < today; }).length;
-
   var html =
     '<div class="admin-stat-card"><div class="stat-num">' + total + '</div><div class="stat-label">전체 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + todayCount + '</div><div class="stat-label">오늘 예약</div></div>' +

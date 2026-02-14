@@ -696,8 +696,6 @@
       text-align: center;
     }
 
-
-
     .delete-summary {
       border: 1px solid var(--gray-line);
       border-radius: var(--radius-sm);
@@ -896,7 +894,6 @@
       color: var(--dark);
       font-weight: 600;
     }
-
 
     .edit-change-box {
       width: 100%;
