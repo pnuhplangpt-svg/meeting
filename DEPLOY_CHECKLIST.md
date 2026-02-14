@@ -47,6 +47,8 @@
 
 - [ ] 정적 파일 업로드/배포 완료
 - [ ] Vercel Function(`/api/proxy`) 정상 배포 확인
+- [ ] `/api/proxy?action=getReservations` (date/floor 없이) 400 차단 확인
+- [ ] `/api/proxy` 과도 호출 시 429 rate-limit 동작 샘플 확인
 - [ ] Apps Script 새 버전 배포 완료
 - [ ] 배포 버전/시간 기록
 
