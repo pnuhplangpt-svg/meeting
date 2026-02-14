@@ -38,8 +38,6 @@ function getSheet() {
   return sheet;
 }
 
-
-
 function getAuditSheet() {
   const ss = SpreadsheetApp.getActiveSpreadsheet();
   let sheet = ss.getSheetByName(AUDIT_SHEET_NAME);
@@ -293,7 +291,6 @@ function hashPassword(password) {
 }
 
 // ─── GET 요청 핸들러 ────────────────────────────────────
-
 
 function getSecurityAlerts(params) {
   const adminToken = params && params.adminToken ? params.adminToken : '';
