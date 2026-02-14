@@ -1218,6 +1218,40 @@
       margin-bottom: 10px;
     }
 
+    .admin-anomaly-box {
+      border: 1px solid var(--gray-light);
+      border-radius: 8px;
+      padding: 8px 10px;
+      margin-bottom: 8px;
+      font-size: 12px;
+    }
+
+    .admin-anomaly-box .h {
+      font-weight: 700;
+      margin-bottom: 4px;
+    }
+
+    .admin-anomaly-box .d,
+    .admin-anomaly-box li {
+      color: var(--gray-text);
+      line-height: 1.4;
+    }
+
+    .admin-anomaly-box ul {
+      margin: 0;
+      padding-left: 16px;
+    }
+
+    .admin-anomaly-box.warn {
+      background: #fff7ed;
+      border-color: #fed7aa;
+    }
+
+    .admin-anomaly-box.ok {
+      background: #f0fdf4;
+      border-color: #bbf7d0;
+    }
+
     .admin-trend-head {
       font-size: 12px;
       color: var(--gray-text);
