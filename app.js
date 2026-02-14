@@ -20,7 +20,8 @@ const state = (function createAppState() {
     pendingAction: null,
     pendingId: null,
     reservationAuthToken: null,
-    editReservationId: null
+    editReservationId: null,
+    editOriginalReservation: null
   };
 
   const api = {};
@@ -308,6 +309,7 @@ function navigateTo(screenId) {
 function resetAndGoHome() {
   state.reservationAuthToken = null;
   state.editReservationId = null;
+  state.editOriginalReservation = null;
   state.selectedFloor = null;
   state.selectedDate = null;
   state.selectedStartTime = null;
@@ -318,7 +320,8 @@ function resetAndGoHome() {
   btn.textContent = '층을 선택해주세요';
 
   setReservationPasswordMode(false);
-
+  document.getElementById('reserveTitle').textContent = '예약하기';
+  document.getElementById('reserveSubtitle').textContent = '회의실과 시간을 선택해주세요';
   navigateTo('screenHome');
 }
 
@@ -566,6 +569,10 @@ async function loadTimeSlots() {
   state.currentReservedSlots = reservedSlots;
   renderTimeGrid(reservedSlots);
   updateConfirmButton();
+  
+  if (state.editReservationId && state.selectedEndTime) {
+    renderSelectionSummary();
+  }
 }
 
 function renderTimeGrid(reservedSlots) {
@@ -657,11 +664,9 @@ function selectTime(time) {
       var candidateEnd = addMinutes(time, 30);
       // 선택 구간 내에 이미 예약된 시간이 있는지 확인
       if (hasConflictInRange(state.selectedStartTime, candidateEnd)) {
-        showToast('선택한 시간 구간에 이미 예약이 있습니다.', 'error');
-        // 시작 시간 리셋
-        state.selectedStartTime = null;
+        showToast('선택한 시간 구간에 이미 예약이 있습니다. 종료 시간을 다시 선택해주세요.', 'error');
         state.selectedEndTime = null;
-        hint.textContent = '시작 시간을 선택하세요';
+        hint.textContent = '종료 시간을 다시 선택하세요 (시작: ' + state.selectedStartTime + ')';
       } else {
         state.selectedEndTime = candidateEnd;
         hint.textContent = state.selectedStartTime + ' ~ ' + state.selectedEndTime;
@@ -694,6 +699,9 @@ function selectTime(time) {
   });
 
   updateConfirmButton();
+  if (state.editReservationId && state.selectedEndTime) {
+    renderSelectionSummary();
+  }
 }
 
 function handleConfirmReservation() {
@@ -703,17 +711,58 @@ function handleConfirmReservation() {
   return submitReservation();
 }
 
+function getEditDiffRows() {
+  if (!state.editReservationId || !state.editOriginalReservation) return '';
+
+  var current = {
+    floor: state.selectedFloor || '',
+    date: state.selectedDate || '',
+    startTime: state.selectedStartTime || '',
+    endTime: state.selectedEndTime || '',
+    teamName: document.getElementById('inputTeam').value.trim(),
+    userName: document.getElementById('inputName').value.trim()
+  };
+
+  var before = state.editOriginalReservation;
+  var rows = [];
+
+  function pushIfChanged(label, from, to) {
+    if (String(from || '') === String(to || '')) return;
+    rows.push(
+      '<div class="edit-change-item">' +
+        '<span class="edit-change-label">' + escapeHtml(label) + '</span>' +
+        '<span class="edit-change-arrow">' + escapeHtml(String(from || '미입력')) + ' → ' + escapeHtml(String(to || '미입력')) + '</span>' +
+      '</div>'
+    );
+  }
+
+  pushIfChanged('층', before.floor, current.floor);
+  pushIfChanged('날짜', before.date, current.date);
+  pushIfChanged('시간', (before.startTime || '') + ' ~ ' + (before.endTime || ''), (current.startTime || '') + ' ~ ' + (current.endTime || ''));
+  pushIfChanged('팀명', before.teamName, current.teamName);
+  pushIfChanged('예약자', before.userName, current.userName);
+
+  if (rows.length === 0) return '<div class="edit-change-empty">변경된 내용이 없습니다.</div>';
+  return '<div class="edit-change-title">변경 예정 항목</div>' + rows.join('');
+}
+
+function renderSelectionSummary() {
+  const summary = document.getElementById('selectionSummary');
+  if (!summary) return;
+
+  summary.innerHTML =
+    '<div class="sel-item"><span class="sel-label">층</span><span class="sel-value">' + state.selectedFloor + '</span></div>' +
+    '<div class="sel-item"><span class="sel-label">날짜</span><span class="sel-value">' + formatDateKr(state.selectedDate) + '</span></div>' +
+    '<div class="sel-item"><span class="sel-label">시간</span><span class="sel-value">' + state.selectedStartTime + ' ~ ' + state.selectedEndTime + '</span></div>' +
+    (state.editReservationId ? '<div class="edit-change-box">' + getEditDiffRows() + '</div>' : '');
+}
+
 function showFormSection() {
   document.getElementById('formDivider').style.display = 'block';
   const section = document.getElementById('formSection');
   section.style.display = 'block';
 
-  // 선택 요약 표시
-  const summary = document.getElementById('selectionSummary');
-  summary.innerHTML =
-    '<div class="sel-item"><span class="sel-label">층</span><span class="sel-value">' + state.selectedFloor + '</span></div>' +
-    '<div class="sel-item"><span class="sel-label">날짜</span><span class="sel-value">' + formatDateKr(state.selectedDate) + '</span></div>' +
-    '<div class="sel-item"><span class="sel-label">시간</span><span class="sel-value">' + state.selectedStartTime + ' ~ ' + state.selectedEndTime + '</span></div>';
+  renderSelectionSummary();
 
   setTimeout(function() {
     section.scrollIntoView({ behavior: 'smooth', block: 'start' });
@@ -749,6 +798,10 @@ function updateConfirmButton() {
 document.addEventListener('input', function(e) {
   if (['inputTeam', 'inputName', 'inputPassword'].includes(e.target.id)) {
     updateConfirmButton();
+    if (state.editReservationId) {
+      renderSelectionSummary();
+    }
+
   }
 });
 
@@ -964,14 +1017,23 @@ async function verifyAndEdit(id) {
         state.selectedDate = reservation['날짜'];
         state.selectedStartTime = reservation['시작시간'];
         state.selectedEndTime = reservation['종료시간'];
+        state.editOriginalReservation = {
+          floor: reservation['층'],
+          date: reservation['날짜'],
+          startTime: reservation['시작시간'],
+          endTime: reservation['종료시간'],
+          teamName: reservation['팀명'],
+          userName: reservation['예약자']
+        };
 
         document.getElementById('reserveTitle').textContent = '예약 수정';
         document.getElementById('reserveSubtitle').textContent = 'J동 ' + reservation['층'] + '회의실';
         document.getElementById('inputTeam').value = reservation['팀명'];
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = '';
-
         setReservationPasswordMode(true);
+
+
         renderCalendar();
         await loadTimeSlots();
         showFormSection();
@@ -993,6 +1055,11 @@ async function verifyAndEdit(id) {
 }
 
 async function submitUpdate(id) {
+  if (state.editOriginalReservation && !getEditDiffRows().includes('edit-change-item')) {
+    showToast('변경된 내용이 없습니다.', 'error');
+    return;
+  }
+
   showLoading(true);
 
   try {
@@ -1013,9 +1080,11 @@ async function submitUpdate(id) {
     if (res.success) {
       state.reservationAuthToken = null;
       state.editReservationId = null;
+      state.editOriginalReservation = null;
       setReservationPasswordMode(false);
       showToast('예약이 수정되었습니다.', 'success');
-      navigateTo('screenMyReservations');
+      await loadReservations();
+      showScreen('screenMyReservations');
     } else {
       showToast(res.error || '수정에 실패했습니다.', 'error');
     }
@@ -1664,7 +1733,6 @@ var adminReservations = [];
 var adminCurrentFilter = 'all';
 var adminSecurityAlerts = null;
 
-
 function openAdminAuth() {
   document.getElementById('adminCodeInput').value = '';
   openModal('modalAdminAuth');
@@ -1800,7 +1868,6 @@ function renderAdminStats() {
   var upcoming = adminReservations.filter(function(r) { return r['날짜'] >= today; }).length;
   var past = adminReservations.filter(function(r) { return r['날짜'] < today; }).length;
   var html =
-
     '<div class="admin-stat-card"><div class="stat-num">' + total + '</div><div class="stat-label">전체 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + todayCount + '</div><div class="stat-label">오늘 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + upcoming + '</div><div class="stat-label">예정 예약</div></div>' +

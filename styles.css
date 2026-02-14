@@ -867,6 +867,46 @@
       font-weight: 600;
     }
 
+    .edit-change-box {
+      width: 100%;
+      border-top: 1px solid var(--gray-line);
+      margin-top: 4px;
+      padding-top: 10px;
+    }
+
+    .edit-change-title {
+      font-size: 12px;
+      color: var(--gray-text);
+      margin-bottom: 6px;
+      font-weight: 600;
+    }
+
+    .edit-change-item {
+      display: flex;
+      justify-content: space-between;
+      gap: 8px;
+      font-size: 12px;
+      line-height: 1.4;
+      padding: 4px 0;
+    }
+
+    .edit-change-label {
+      color: var(--gray-text);
+      min-width: 36px;
+    }
+
+    .edit-change-arrow {
+      color: var(--dark);
+      font-weight: 600;
+      text-align: right;
+      word-break: break-word;
+    }
+
+    .edit-change-empty {
+      font-size: 12px;
+      color: var(--gray-text);
+    }
+
     /* ─── Install Banner ───────────────────────────── */
     .install-banner {
       display: none;
