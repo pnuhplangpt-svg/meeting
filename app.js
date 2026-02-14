@@ -114,11 +114,8 @@ document.addEventListener('DOMContentLoaded', function() {
   initNetworkBanner();
   navigateTo('screenHome');
   initInstallBanner();
-
   registerServiceWorker();
 });
-
-
 
 function registerServiceWorker() {
   if (!('serviceWorker' in navigator)) return;
@@ -325,7 +322,6 @@ function resetAndGoHome() {
   setReservationPasswordMode(false);
   document.getElementById('reserveTitle').textContent = '예약하기';
   document.getElementById('reserveSubtitle').textContent = '회의실과 시간을 선택해주세요';
-
   navigateTo('screenHome');
 }
 
@@ -573,6 +569,7 @@ async function loadTimeSlots() {
   state.currentReservedSlots = reservedSlots;
   renderTimeGrid(reservedSlots);
   updateConfirmButton();
+  
   if (state.editReservationId && state.selectedEndTime) {
     renderSelectionSummary();
   }
@@ -786,6 +783,7 @@ function updateConfirmButton() {
     state.selectedEndTime &&
     team.length > 0 &&
     name.length > 0 &&
+
     (state.editReservationId ? true : /^\d{4}$/.test(pw));
 
   btn.disabled = !isValid;
@@ -803,6 +801,7 @@ document.addEventListener('input', function(e) {
     if (state.editReservationId) {
       renderSelectionSummary();
     }
+
   }
 });
 
@@ -1033,6 +1032,7 @@ async function verifyAndEdit(id) {
         document.getElementById('inputName').value = reservation['예약자'];
         document.getElementById('inputPassword').value = '';
         setReservationPasswordMode(true);
+
 
         renderCalendar();
         await loadTimeSlots();
@@ -1830,6 +1830,7 @@ async function adminRefresh() {
       });
 
       await loadAdminSecurityAlerts();
+
       renderAdminStats();
       renderAdminList();
     } else {
@@ -1840,7 +1841,6 @@ async function adminRefresh() {
     list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(formatApiError(e, '서버에 연결할 수 없습니다.')) + '</p></div>';
   }
 }
-
 
 
 async function loadAdminSecurityAlerts() {
@@ -1867,7 +1867,6 @@ function renderAdminStats() {
   var todayCount = adminReservations.filter(function(r) { return r['날짜'] === today; }).length;
   var upcoming = adminReservations.filter(function(r) { return r['날짜'] >= today; }).length;
   var past = adminReservations.filter(function(r) { return r['날짜'] < today; }).length;
-
   var html =
     '<div class="admin-stat-card"><div class="stat-num">' + total + '</div><div class="stat-label">전체 예약</div></div>' +
     '<div class="admin-stat-card"><div class="stat-num">' + todayCount + '</div><div class="stat-label">오늘 예약</div></div>' +
