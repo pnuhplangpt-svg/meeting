@@ -65,7 +65,6 @@ vercel env add APPS_SCRIPT_URL
 
 Phase 2 hardening now included in `api/proxy`:
 - GET/POST action allowlist enforcement
-- `getReservations` requires both `date` and `floor`
 - per-IP+method basic rate limiting (60 req/min, best-effort in serverless runtime)
 
 ## Playwright 환경 빠른 구축 (로컬 PC)

@@ -88,14 +88,6 @@ function ensureGetActionPolicy(action, query) {
     return { ok: false, status: 400, error: '허용되지 않은 GET 액션입니다.' };
   }
 
-  if (action === 'getReservations') {
-    const date = query && query.date ? String(query.date).trim() : '';
-    const floor = query && query.floor ? String(query.floor).trim() : '';
-    if (!date || !floor) {
-      return { ok: false, status: 400, error: 'getReservations 요청에는 date와 floor가 필요합니다.' };
-    }
-  }
-
   return { ok: true };
 }
 
