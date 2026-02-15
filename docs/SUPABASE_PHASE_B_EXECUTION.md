@@ -94,7 +94,8 @@ order by floor;
 - [ ] 홈 화면 회의실 목록 로드 (`getRooms`)
 - [ ] 예약 내역 로드 (`getReservations`)
 - [ ] 예약 ID 조회 (`getReservationById`)
-- [ ] 예약 생성/수정/삭제는 기존처럼 동작 (Apps Script 경유)
+- [ ] 운영 점검/지표 조회 (`getOperationalChecks`, `getOperationalMetrics`)
+- [ ] 예약 생성/수정/삭제는 기존처럼 동작 (Phase C 전 Apps Script 경유)
 
 ---
 
