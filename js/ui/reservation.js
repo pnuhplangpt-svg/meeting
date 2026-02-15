@@ -33,6 +33,18 @@ export function startReservation() {
     document.getElementById('inputTeam').value = '';
     document.getElementById('inputName').value = '';
     document.getElementById('inputPassword').value = '';
+
+    // Add listeners for real-time validation
+    ['inputTeam', 'inputName', 'inputPassword'].forEach(function (id) {
+        var el = document.getElementById(id);
+        if (el) {
+            el.oninput = function () {
+                updateConfirmButton();
+                if (state.editReservationId) renderSelectionSummary();
+            };
+        }
+    });
+
     setReservationPasswordMode(false);
 
     updateConfirmButton();
