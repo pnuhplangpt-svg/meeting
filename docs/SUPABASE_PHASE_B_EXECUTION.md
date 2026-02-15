@@ -112,11 +112,13 @@ order by floor;
 - `SUPABASE_WRITE_ENABLED=true`
 - `PROXY_PASSWORD_PEPPER=<Apps Script의 PASSWORD_PEPPER와 동일 값>`
 - `PROXY_TOKEN_SECRET=<긴 랜덤 문자열>`
+- `PROXY_ADMIN_CODE=<6자리 관리자 코드>`
 
 검증:
 - [ ] 예약 생성 성공 (`createReservation`)
 - [ ] 비밀번호 확인 성공 (`verifyPassword`)
 - [ ] 예약 수정/취소 성공 (`updateReservation` / `deleteReservation`)
+- [ ] 관리자 로그인/회의실 추가·수정·삭제 성공 (`verifyAdmin`, `addRoom/updateRoom/deleteRoom`)
 
 문제 시 롤백:
 - `SUPABASE_WRITE_ENABLED=false`

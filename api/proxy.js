@@ -39,14 +39,15 @@ const POST_ACTION_REQUIRED_FIELDS = {
   deleteReservation: ['id'],
   verifyPassword: ['id', 'password'],
   addRoom: ['adminToken', 'floor', 'name'],
-  updateRoom: ['adminToken', 'id'],
-  deleteRoom: ['adminToken', 'id'],
+  updateRoom: ['adminToken', 'roomId'],
+  deleteRoom: ['adminToken', 'roomId'],
   sendOperationalMetricsReport: ['adminToken']
 };
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 60;
 const RESERVATION_TOKEN_TTL_SEC = 10 * 60;
+const ADMIN_TOKEN_TTL_SEC = 12 * 60 * 60;
 
 function isSupabaseReadEnabled() {
   return String(process.env.SUPABASE_READ_ENABLED || '').toLowerCase() === 'true';
@@ -58,6 +59,14 @@ function isSupabaseWriteEnabled() {
 
 function isStrictPasswordHashEnabled() {
   return String(process.env.SUPABASE_STRICT_PASSWORD_HASH || '').toLowerCase() === 'true';
+}
+
+function getProxyAdminCode() {
+  return String(process.env.PROXY_ADMIN_CODE || '').trim();
+}
+
+function isProxyAdminEnabled() {
+  return !!getProxyAdminCode();
 }
 
 function getSupabaseConfig() {
@@ -266,10 +275,11 @@ async function supabaseSelect(config, table, queryParams) {
 }
 
 function shouldServeGetFromSupabase(action, query) {
+  if (action === 'verifyAdmin' && isProxyAdminEnabled()) return true;
   if (!isSupabaseReadEnabled()) return false;
   if (action === 'getReservations') return true;
   if (action === 'getReservationById') return true;
-  if (action === 'getRooms' && !parseBoolean(query.includeInactive)) return true;
+  if (action === 'getRooms') return true;
   return false;
 }
 
@@ -278,7 +288,10 @@ function shouldServePostFromSupabase(action, body) {
   if (action === 'createReservation') return true;
   if (action === 'verifyPassword') return true;
   if (action === 'updateReservation') return true;
-  if (action === 'deleteReservation' && !isNonEmptyValue(body.adminToken)) return true;
+  if (action === 'deleteReservation') return true;
+  if (action === 'addRoom') return true;
+  if (action === 'updateRoom') return true;
+  if (action === 'deleteRoom') return true;
   return false;
 }
 
@@ -340,6 +353,45 @@ function verifyReservationToken(token, reservationId) {
   }
 
   return { ok: true };
+}
+
+function signAdminToken() {
+  const secret = getReservationTokenSecret();
+  if (!secret) throw new Error('PROXY_TOKEN_SECRET is not set');
+
+  const payload = {
+    role: 'admin',
+    exp: Math.floor(Date.now() / 1000) + ADMIN_TOKEN_TTL_SEC
+  };
+  const payloadB64 = base64UrlEncode(JSON.stringify(payload));
+  const sig = createHmac('sha256', secret).update(payloadB64).digest('base64url');
+  return payloadB64 + '.' + sig;
+}
+
+function verifyAdminTokenLocal(token) {
+  const secret = getReservationTokenSecret();
+  if (!secret) return { ok: false, error: '유효하지 않거나 만료된 인증 정보입니다.' };
+
+  const parts = String(token || '').split('.');
+  if (parts.length !== 2) return { ok: false, error: '유효하지 않거나 만료된 인증 정보입니다.' };
+
+  const payloadB64 = parts[0];
+  const providedSig = parts[1];
+  const expectedSig = createHmac('sha256', secret).update(payloadB64).digest('base64url');
+  const providedBuf = Buffer.from(providedSig, 'utf8');
+  const expectedBuf = Buffer.from(expectedSig, 'utf8');
+  if (providedBuf.length !== expectedBuf.length || !timingSafeEqual(providedBuf, expectedBuf)) {
+    return { ok: false, error: '유효하지 않거나 만료된 인증 정보입니다.' };
+  }
+
+  try {
+    const payload = JSON.parse(base64UrlDecode(payloadB64));
+    if (!payload || payload.role !== 'admin') return { ok: false, error: '유효하지 않거나 만료된 인증 정보입니다.' };
+    if (!payload.exp || Number(payload.exp) < Math.floor(Date.now() / 1000)) return { ok: false, error: '유효하지 않거나 만료된 인증 정보입니다.' };
+    return { ok: true };
+  } catch (e) {
+    return { ok: false, error: '유효하지 않거나 만료된 인증 정보입니다.' };
+  }
 }
 
 function hashPassword(password) {
@@ -418,17 +470,37 @@ async function hasTimeConflict(config, date, floor, startTime, endTime, excludeI
 }
 
 async function handleSupabaseGetAction(action, query) {
+  if (action === 'verifyAdmin' && isProxyAdminEnabled()) {
+    const code = String(query.code || '').trim();
+    if (!/^\d{6}$/.test(code)) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 코드 형식이 올바르지 않습니다.' } };
+    }
+    if (code !== getProxyAdminCode()) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 인증에 실패했습니다.' } };
+    }
+    return { handled: true, status: 200, body: { success: true, token: signAdminToken(), message: '관리자 인증 성공' } };
+  }
+
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
     return { handled: true, status: 500, body: { success: false, error: 'Supabase read mode is enabled but configuration is missing.' } };
   }
 
   if (action === 'getRooms') {
-    const rows = await supabaseSelect(config, 'rooms', {
+    const includeInactive = parseBoolean(query.includeInactive);
+    const params = {
       select: 'id,floor,name,is_active',
-      is_active: 'eq.true',
       order: 'floor.asc'
-    });
+    };
+    if (!includeInactive) {
+      params.is_active = 'eq.true';
+    } else {
+      const adminCheck = verifyAdminTokenLocal(query.adminToken || '');
+      if (!adminCheck.ok) {
+        return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
+      }
+    }
+    const rows = await supabaseSelect(config, 'rooms', params);
     return { handled: true, status: 200, body: { success: true, data: rows.map(mapRoomRecord) } };
   }
 
@@ -605,8 +677,8 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
     const id = String(body.id || '').trim();
 
     if (isNonEmptyValue(body.adminToken)) {
-      const adminOk = await verifyAdminViaUpstream(upstream, sharedSecret, body.adminToken);
-      if (!adminOk.ok) {
+      const adminCheck = verifyAdminTokenLocal(body.adminToken || '');
+      if (!adminCheck.ok) {
         return { handled: true, status: 200, body: { success: false, error: '유효하지 않거나 만료된 인증 정보입니다.' } };
       }
     } else {
@@ -618,6 +690,70 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
 
     await supabaseRequest(config, 'DELETE', 'reservations', { id: 'eq.' + id });
     return { handled: true, status: 200, body: { success: true, message: '예약이 취소되었습니다.' } };
+  }
+
+  if (action === 'addRoom') {
+    const adminCheck = verifyAdminTokenLocal(body.adminToken || '');
+    if (!adminCheck.ok) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
+    }
+    const floor = normalizeFloor(body.floor || '');
+    const name = sanitizeText(body.name, 50);
+    if (!floor || !name) {
+      return { handled: true, status: 200, body: { success: false, error: '층과 이름을 입력해주세요.' } };
+    }
+
+    const existing = await supabaseSelect(config, 'rooms', {
+      select: 'id',
+      id: 'eq.' + floor,
+      limit: '1'
+    });
+    if (existing.length) {
+      return { handled: true, status: 200, body: { success: false, error: '이미 존재하는 회의실 ID입니다.' } };
+    }
+
+    await supabaseRequest(config, 'POST', 'rooms', {}, [{ id: floor, floor, name, is_active: true }]);
+    return { handled: true, status: 200, body: { success: true, message: '회의실이 추가되었습니다.' } };
+  }
+
+  if (action === 'updateRoom') {
+    const adminCheck = verifyAdminTokenLocal(body.adminToken || '');
+    if (!adminCheck.ok) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
+    }
+    const roomId = String(body.roomId || '').trim();
+    if (!roomId) {
+      return { handled: true, status: 200, body: { success: false, error: '회의실 ID가 필요합니다.' } };
+    }
+
+    const patch = {};
+    if (body.name !== undefined) patch.name = sanitizeText(body.name, 50);
+    if (body.active !== undefined) patch.is_active = !!body.active;
+    if (!Object.keys(patch).length) {
+      return { handled: true, status: 200, body: { success: false, error: '변경할 값이 없습니다.' } };
+    }
+
+    const existing = await supabaseSelect(config, 'rooms', { select: 'id', id: 'eq.' + roomId, limit: '1' });
+    if (!existing.length) {
+      return { handled: true, status: 200, body: { success: false, error: '회의실을 찾을 수 없습니다.' } };
+    }
+
+    await supabaseRequest(config, 'PATCH', 'rooms', { id: 'eq.' + roomId }, patch);
+    return { handled: true, status: 200, body: { success: true, message: '회의실이 수정되었습니다.' } };
+  }
+
+  if (action === 'deleteRoom') {
+    const adminCheck = verifyAdminTokenLocal(body.adminToken || '');
+    if (!adminCheck.ok) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
+    }
+    const roomId = String(body.roomId || '').trim();
+    if (!roomId) {
+      return { handled: true, status: 200, body: { success: false, error: '회의실 ID가 필요합니다.' } };
+    }
+
+    await supabaseRequest(config, 'DELETE', 'rooms', { id: 'eq.' + roomId });
+    return { handled: true, status: 200, body: { success: true, message: '회의실이 삭제되었습니다.' } };
   }
 
   return { handled: false };

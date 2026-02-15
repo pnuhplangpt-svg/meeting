@@ -66,6 +66,7 @@ Required Vercel environment variables:
 - `PROXY_PASSWORD_PEPPER`: Apps Script `PASSWORD_PEPPER`와 동일 값 (비밀번호 해시 호환)
 - `PROXY_TOKEN_SECRET`: 프록시 예약 토큰 서명용 비밀키
 - `SUPABASE_STRICT_PASSWORD_HASH`: `true`면 placeholder 해시 예약을 Apps Script로 fallback하지 않고 차단
+- `PROXY_ADMIN_CODE`: 6자리 관리자 코드 (설정 시 `verifyAdmin`/회의실 관리를 proxy+Supabase에서 처리)
 
 Example (local dev):
 
@@ -148,3 +149,6 @@ python3 scripts/backfill_password_hashes_to_supabase.py
 ```
 
 After successful backfill, set `SUPABASE_STRICT_PASSWORD_HASH=true` in Vercel.
+
+
+- Admin room actions (`addRoom`, `updateRoom`, `deleteRoom`) are served from Supabase when `SUPABASE_WRITE_ENABLED=true` and `PROXY_ADMIN_CODE` is configured.
