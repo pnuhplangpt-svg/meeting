@@ -3,14 +3,22 @@
  * 오프라인 캐싱 및 네트워크 전략 관리
  */
 
-const CACHE_NAME = 'jdong-reservation-v7';
+const CACHE_NAME = 'jdong-reservation-v8';
 const STATIC_ASSETS = [
   './',
   './index.html',
   './manifest.json',
   './styles.css',
   './app.js',
-  './qrcode.min.js'
+  './js/lib/qrcode.min.js',
+  './js/utils.js',
+  './js/state.js',
+  './js/api.js',
+  './js/ui/common.js',
+  './js/ui/home.js',
+  './js/ui/reservation.js',
+  './js/ui/admin.js',
+  './js/ui/display.js'
 ];
 
 const STATIC_CACHE_PATHS = new Set([
@@ -19,7 +27,15 @@ const STATIC_CACHE_PATHS = new Set([
   '/manifest.json',
   '/styles.css',
   '/app.js',
-  '/qrcode.min.js'
+  '/js/lib/qrcode.min.js',
+  '/js/utils.js',
+  '/js/state.js',
+  '/js/api.js',
+  '/js/ui/common.js',
+  '/js/ui/home.js',
+  '/js/ui/reservation.js',
+  '/js/ui/admin.js',
+  '/js/ui/display.js'
 ]);
 
 
@@ -31,26 +47,26 @@ function isCacheableStaticRequest(request, url) {
 }
 
 // ─── 설치 ───────────────────────────────────────────────
-self.addEventListener('install', function(event) {
+self.addEventListener('install', function (event) {
   event.waitUntil(
-    caches.open(CACHE_NAME).then(function(cache) {
+    caches.open(CACHE_NAME).then(function (cache) {
       return cache.addAll(STATIC_ASSETS);
-    }).then(function() {
+    }).then(function () {
       return self.skipWaiting();
     })
   );
 });
 
 // ─── 활성화 (이전 캐시 정리) ─────────────────────────────
-self.addEventListener('activate', function(event) {
+self.addEventListener('activate', function (event) {
   event.waitUntil(
-    caches.keys().then(function(cacheNames) {
+    caches.keys().then(function (cacheNames) {
       return Promise.all(
         cacheNames
-          .filter(function(name) { return name !== CACHE_NAME; })
-          .map(function(name) { return caches.delete(name); })
+          .filter(function (name) { return name !== CACHE_NAME; })
+          .map(function (name) { return caches.delete(name); })
       );
-    }).then(function() {
+    }).then(function () {
       return self.clients.claim();
     })
   );
@@ -58,7 +74,7 @@ self.addEventListener('activate', function(event) {
 
 
 
-self.addEventListener('message', function(event) {
+self.addEventListener('message', function (event) {
   if (!event.data) return;
   if (event.data.type === 'SKIP_WAITING') {
     self.skipWaiting();
@@ -69,17 +85,17 @@ function cacheResponse(request, response) {
   if (!response || response.status !== 200 || response.type === 'opaque') {
     return Promise.resolve(response);
   }
-  return caches.open(CACHE_NAME).then(function(cache) {
+  return caches.open(CACHE_NAME).then(function (cache) {
     cache.put(request, response.clone());
     return response;
   });
 }
 
 function networkFirst(request) {
-  return fetch(request).then(function(response) {
+  return fetch(request).then(function (response) {
     return cacheResponse(request, response);
-  }).catch(function() {
-    return caches.match(request).then(function(cachedResponse) {
+  }).catch(function () {
+    return caches.match(request).then(function (cachedResponse) {
       if (cachedResponse) return cachedResponse;
       throw new Error('Network unavailable and cache miss');
     });
@@ -87,7 +103,7 @@ function networkFirst(request) {
 }
 
 // ─── 요청 가로채기 (네트워크 우선 전략) ──────────────────
-self.addEventListener('fetch', function(event) {
+self.addEventListener('fetch', function (event) {
   if (event.request.method !== 'GET') return;
 
   const url = new URL(event.request.url);
@@ -96,7 +112,7 @@ self.addEventListener('fetch', function(event) {
   // Google Apps Script API 요청은 SW가 절대 가로채지 않음
   // (브라우저 기본 네트워크 스택으로 전달하여 CORS/리다이렉트 오류를 명확히 유지)
   if (url.hostname.includes('script.google.com') ||
-      url.hostname.includes('script.googleusercontent.com')) {
+    url.hostname.includes('script.googleusercontent.com')) {
     return;
   }
 
