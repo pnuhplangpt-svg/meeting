@@ -49,14 +49,6 @@ const RATE_LIMIT_MAX_REQUESTS = 60;
 const RESERVATION_TOKEN_TTL_SEC = 10 * 60;
 const ADMIN_TOKEN_TTL_SEC = 12 * 60 * 60;
 
-function isSupabaseReadEnabled() {
-  return String(process.env.SUPABASE_READ_ENABLED || '').toLowerCase() === 'true';
-}
-
-function isSupabaseWriteEnabled() {
-  return String(process.env.SUPABASE_WRITE_ENABLED || '').toLowerCase() === 'true';
-}
-
 function isStrictPasswordHashEnabled() {
   return String(process.env.SUPABASE_STRICT_PASSWORD_HASH || '').toLowerCase() === 'true';
 }
@@ -109,12 +101,6 @@ function checkRateLimit(req) {
     return { allowed: false, retryAfterSec: Math.ceil((RATE_LIMIT_WINDOW_MS - (now - item.startedAt)) / 1000) };
   }
   return { allowed: true };
-}
-
-function buildUpstreamPostBody(body) {
-  if (typeof body === 'string') return body;
-  if (body == null) return '{}';
-  return JSON.stringify(body);
 }
 
 function parseIncomingPostBody(body) {
@@ -274,9 +260,8 @@ async function supabaseSelect(config, table, queryParams) {
   return supabaseRequest(config, 'GET', table, queryParams);
 }
 
-function shouldServeGetFromSupabase(action, query) {
-  if (action === 'verifyAdmin' && isProxyAdminEnabled()) return true;
-  if (!isSupabaseReadEnabled()) return false;
+function shouldServeGetFromSupabase(action) {
+  if (action === 'verifyAdmin') return true;
   if (action === 'getReservations') return true;
   if (action === 'getReservationById') return true;
   if (action === 'getRooms') return true;
@@ -288,8 +273,7 @@ function shouldServeGetFromSupabase(action, query) {
   return false;
 }
 
-function shouldServePostFromSupabase(action, body) {
-  if (!isSupabaseWriteEnabled()) return false;
+function shouldServePostFromSupabase(action) {
   if (action === 'createReservation') return true;
   if (action === 'verifyPassword') return true;
   if (action === 'updateReservation') return true;
@@ -310,7 +294,7 @@ function base64UrlDecode(str) {
 }
 
 function getReservationTokenSecret() {
-  return String(process.env.PROXY_TOKEN_SECRET || process.env.PROXY_SHARED_SECRET || '').trim();
+  return String(process.env.PROXY_TOKEN_SECRET || '').trim();
 }
 
 function signReservationToken(reservationId) {
@@ -668,7 +652,11 @@ async function hasTimeConflict(config, date, floor, startTime, endTime, excludeI
 }
 
 async function handleSupabaseGetAction(action, query) {
-  if (action === 'verifyAdmin' && isProxyAdminEnabled()) {
+  if (action === 'verifyAdmin') {
+    if (!isProxyAdminEnabled()) {
+      return { handled: true, status: 500, body: { success: false, error: 'PROXY_ADMIN_CODE 환경변수가 필요합니다.' } };
+    }
+
     const code = String(query.code || '').trim();
     if (!/^\d{6}$/.test(code)) {
       return { handled: true, status: 200, body: { success: false, error: '관리자 코드 형식이 올바르지 않습니다.' } };
@@ -681,7 +669,7 @@ async function handleSupabaseGetAction(action, query) {
 
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
-    return { handled: true, status: 500, body: { success: false, error: 'Supabase read mode is enabled but configuration is missing.' } };
+    return { handled: true, status: 500, body: { success: false, error: 'Supabase 구성이 누락되었습니다.' } };
   }
 
   if (action === 'getRooms') {
@@ -790,7 +778,7 @@ async function handleSupabaseGetAction(action, query) {
 async function handleSupabasePostAction(action, body) {
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
-    return { handled: true, status: 500, body: { success: false, error: 'Supabase write mode is enabled but configuration is missing.' } };
+    return { handled: true, status: 500, body: { success: false, error: 'Supabase 구성이 누락되었습니다.' } };
   }
 
   if (action === 'createReservation') {
@@ -1035,8 +1023,6 @@ async function handleSupabasePostAction(action, body) {
 }
 
 export default async function handler(req, res) {
-  const upstream = process.env.APPS_SCRIPT_URL;
-
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ success: false, error: 'Method not allowed.' });
@@ -1058,7 +1044,7 @@ export default async function handler(req, res) {
     }
 
     try {
-      if (shouldServeGetFromSupabase(action, req.query || {})) {
+      if (shouldServeGetFromSupabase(action)) {
         const supabaseResult = await handleSupabaseGetAction(action, req.query || {});
         if (supabaseResult.handled) {
           return res.status(supabaseResult.status).json(supabaseResult.body);
@@ -1084,7 +1070,7 @@ export default async function handler(req, res) {
     }
 
     try {
-      if (shouldServePostFromSupabase(action, parsed)) {
+      if (shouldServePostFromSupabase(action)) {
         const supabaseResult = await handleSupabasePostAction(action, parsed);
         if (supabaseResult.handled) {
           return res.status(supabaseResult.status).json(supabaseResult.body);
@@ -1094,8 +1080,8 @@ export default async function handler(req, res) {
       return res.status(502).json({ success: false, error: 'Supabase 쓰기 처리 중 오류가 발생했습니다.' });
     }
 
-    return res.status(501).json({ success: false, error: '아직 Supabase로 이관되지 않은 POST 액션입니다.' });
+    return res.status(400).json({ success: false, error: '지원하지 않는 POST 액션입니다.' });
   }
 
-  return res.status(501).json({ success: false, error: '아직 Supabase로 이관되지 않은 GET 액션입니다.' });
+  return res.status(400).json({ success: false, error: '지원하지 않는 GET 액션입니다.' });
 }
