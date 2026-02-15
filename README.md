@@ -37,7 +37,7 @@ The test uses an in-page mocked API (`fetch` override), so it is deterministic a
 
 Operational metrics now support report preview/send for admins.
 
-### Script Properties
+### Vercel Environment Variables
 
 - `METRICS_REPORT_RECIPIENTS`: report recipients (comma / semicolon / newline separated emails)
 - `METRICS_REPORT_THRESHOLD_ADMIN_FAIL`: alert threshold for admin auth failures (default: `10`)
