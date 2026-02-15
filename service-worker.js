@@ -93,13 +93,6 @@ self.addEventListener('fetch', function(event) {
   const url = new URL(event.request.url);
   if (url.protocol !== 'http:' && url.protocol !== 'https:') return;
 
-  // Google Apps Script API 요청은 SW가 절대 가로채지 않음
-  // (브라우저 기본 네트워크 스택으로 전달하여 CORS/리다이렉트 오류를 명확히 유지)
-  if (url.hostname.includes('script.google.com') ||
-      url.hostname.includes('script.googleusercontent.com')) {
-    return;
-  }
-
   if (!isCacheableStaticRequest(event.request, url)) {
     return;
   }

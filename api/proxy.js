@@ -48,14 +48,9 @@ const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 60;
 const RESERVATION_TOKEN_TTL_SEC = 10 * 60;
 const ADMIN_TOKEN_TTL_SEC = 12 * 60 * 60;
-
-function isSupabaseReadEnabled() {
-  return String(process.env.SUPABASE_READ_ENABLED || '').toLowerCase() === 'true';
-}
-
-function isSupabaseWriteEnabled() {
-  return String(process.env.SUPABASE_WRITE_ENABLED || '').toLowerCase() === 'true';
-}
+const AUTH_WINDOW_MS = 10 * 60 * 1000;
+const AUTH_MAX_ATTEMPTS = 10;
+const AUTH_LOCK_MS = 5 * 60 * 1000;
 
 function isStrictPasswordHashEnabled() {
   return String(process.env.SUPABASE_STRICT_PASSWORD_HASH || '').toLowerCase() === 'true';
@@ -81,6 +76,57 @@ function getRateLimitStore() {
     globalThis.__MEETING_PROXY_RL__ = new Map();
   }
   return globalThis.__MEETING_PROXY_RL__;
+}
+
+function getAuthAttemptStore() {
+  if (!globalThis.__MEETING_PROXY_AUTH__) {
+    globalThis.__MEETING_PROXY_AUTH__ = new Map();
+  }
+  return globalThis.__MEETING_PROXY_AUTH__;
+}
+
+function getAuthAttemptKey(scope, identifier, ip) {
+  return [String(scope || 'global'), String(identifier || 'global'), String(ip || 'unknown')].join('|');
+}
+
+function checkAuthThrottle(scope, identifier, ip) {
+  const store = getAuthAttemptStore();
+  const now = Date.now();
+  const key = getAuthAttemptKey(scope, identifier, ip);
+  const item = store.get(key);
+  if (!item) return { allowed: true };
+
+  if (item.lockedUntil && item.lockedUntil > now) {
+    return { allowed: false, retryAfterSec: Math.ceil((item.lockedUntil - now) / 1000) };
+  }
+
+  if (!item.startedAt || now - item.startedAt >= AUTH_WINDOW_MS) {
+    store.delete(key);
+    return { allowed: true };
+  }
+
+  return { allowed: true };
+}
+
+function recordAuthFailure(scope, identifier, ip) {
+  const store = getAuthAttemptStore();
+  const now = Date.now();
+  const key = getAuthAttemptKey(scope, identifier, ip);
+  const item = store.get(key);
+
+  if (!item || !item.startedAt || now - item.startedAt >= AUTH_WINDOW_MS) {
+    store.set(key, { count: 1, startedAt: now, lockedUntil: 0 });
+    return;
+  }
+
+  const nextCount = Number(item.count || 0) + 1;
+  const lockedUntil = nextCount >= AUTH_MAX_ATTEMPTS ? now + AUTH_LOCK_MS : 0;
+  store.set(key, { count: nextCount, startedAt: item.startedAt, lockedUntil });
+}
+
+function clearAuthFailures(scope, identifier, ip) {
+  const store = getAuthAttemptStore();
+  store.delete(getAuthAttemptKey(scope, identifier, ip));
 }
 
 function getClientIp(req) {
@@ -109,12 +155,6 @@ function checkRateLimit(req) {
     return { allowed: false, retryAfterSec: Math.ceil((RATE_LIMIT_WINDOW_MS - (now - item.startedAt)) / 1000) };
   }
   return { allowed: true };
-}
-
-function buildUpstreamPostBody(body) {
-  if (typeof body === 'string') return body;
-  if (body == null) return '{}';
-  return JSON.stringify(body);
 }
 
 function parseIncomingPostBody(body) {
@@ -274,9 +314,27 @@ async function supabaseSelect(config, table, queryParams) {
   return supabaseRequest(config, 'GET', table, queryParams);
 }
 
-function shouldServeGetFromSupabase(action, query) {
-  if (action === 'verifyAdmin' && isProxyAdminEnabled()) return true;
-  if (!isSupabaseReadEnabled()) return false;
+async function appendAuditLog(config, action, result, actorType, targetId, memo) {
+  if (!config || !config.url || !config.serviceRoleKey) return;
+  await supabaseRequest(config, 'POST', 'audit_logs', {}, [{
+    action: String(action || ''),
+    result: String(result || ''),
+    actor_type: String(actorType || ''),
+    target_id: String(targetId || ''),
+    memo: sanitizeText(memo, 500)
+  }]);
+}
+
+async function appendAuditLogSafe(config, action, result, actorType, targetId, memo) {
+  try {
+    await appendAuditLog(config, action, result, actorType, targetId, memo);
+  } catch (e) {
+    // best-effort audit logging
+  }
+}
+
+function shouldServeGetFromSupabase(action) {
+  if (action === 'verifyAdmin') return true;
   if (action === 'getReservations') return true;
   if (action === 'getReservationById') return true;
   if (action === 'getRooms') return true;
@@ -288,8 +346,7 @@ function shouldServeGetFromSupabase(action, query) {
   return false;
 }
 
-function shouldServePostFromSupabase(action, body) {
-  if (!isSupabaseWriteEnabled()) return false;
+function shouldServePostFromSupabase(action) {
   if (action === 'createReservation') return true;
   if (action === 'verifyPassword') return true;
   if (action === 'updateReservation') return true;
@@ -310,7 +367,7 @@ function base64UrlDecode(str) {
 }
 
 function getReservationTokenSecret() {
-  return String(process.env.PROXY_TOKEN_SECRET || process.env.PROXY_SHARED_SECRET || '').trim();
+  return String(process.env.PROXY_TOKEN_SECRET || '').trim();
 }
 
 function signReservationToken(reservationId) {
@@ -667,21 +724,40 @@ async function hasTimeConflict(config, date, floor, startTime, endTime, excludeI
   return rows.length > 0;
 }
 
-async function handleSupabaseGetAction(action, query) {
-  if (action === 'verifyAdmin' && isProxyAdminEnabled()) {
+async function handleSupabaseGetAction(action, query, context) {
+  if (action === 'verifyAdmin') {
+    const config = getSupabaseConfig();
+    const ip = context && context.ip ? context.ip : 'unknown';
+    const throttle = checkAuthThrottle('admin', 'global', ip);
+    if (!throttle.allowed) {
+      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'rate limit exceeded');
+      return { handled: true, status: 200, body: { success: false, error: '인증 시도 횟수가 초과되었습니다. 잠시 후 다시 시도하세요.' } };
+    }
+
+    if (!isProxyAdminEnabled()) {
+      return { handled: true, status: 500, body: { success: false, error: 'PROXY_ADMIN_CODE 환경변수가 필요합니다.' } };
+    }
+
     const code = String(query.code || '').trim();
     if (!/^\d{6}$/.test(code)) {
+      recordAuthFailure('admin', 'global', ip);
+      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'invalid code format');
       return { handled: true, status: 200, body: { success: false, error: '관리자 코드 형식이 올바르지 않습니다.' } };
     }
     if (code !== getProxyAdminCode()) {
+      recordAuthFailure('admin', 'global', ip);
+      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'code mismatch');
       return { handled: true, status: 200, body: { success: false, error: '관리자 인증에 실패했습니다.' } };
     }
+
+    clearAuthFailures('admin', 'global', ip);
+    await appendAuditLogSafe(config, 'verifyAdmin', 'success', 'admin', 'global', 'verified');
     return { handled: true, status: 200, body: { success: true, token: signAdminToken(), message: '관리자 인증 성공' } };
   }
 
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
-    return { handled: true, status: 500, body: { success: false, error: 'Supabase read mode is enabled but configuration is missing.' } };
+    return { handled: true, status: 500, body: { success: false, error: 'Supabase 구성이 누락되었습니다.' } };
   }
 
   if (action === 'getRooms') {
@@ -787,10 +863,10 @@ async function handleSupabaseGetAction(action, query) {
   return { handled: false };
 }
 
-async function handleSupabasePostAction(action, body) {
+async function handleSupabasePostAction(action, body, context) {
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
-    return { handled: true, status: 500, body: { success: false, error: 'Supabase write mode is enabled but configuration is missing.' } };
+    return { handled: true, status: 500, body: { success: false, error: 'Supabase 구성이 누락되었습니다.' } };
   }
 
   if (action === 'createReservation') {
@@ -836,6 +912,7 @@ async function handleSupabasePostAction(action, body) {
       user_name: safeUserName,
       password_hash: hashPassword(password)
     }]);
+    await appendAuditLogSafe(config, 'createReservation', 'success', 'user', id, safeDate + ' ' + safeFloor + ' ' + safeStart + '-' + safeEnd);
 
     return {
       handled: true,
@@ -859,8 +936,24 @@ async function handleSupabasePostAction(action, body) {
   if (action === 'verifyPassword') {
     const id = String(body.id || '').trim();
     const password = String(body.password || '');
+    const ip = context && context.ip ? context.ip : 'unknown';
+
+    const throttle = checkAuthThrottle('reservation', id, ip);
+    if (!throttle.allowed) {
+      await appendAuditLogSafe(config, 'verifyPassword', 'fail', 'user', id, 'rate limit exceeded');
+      return { handled: true, status: 200, body: { success: false, error: '인증 시도 횟수가 초과되었습니다. 잠시 후 다시 시도하세요.' } };
+    }
+
+    if (!/^\d{4}$/.test(password)) {
+      recordAuthFailure('reservation', id, ip);
+      await appendAuditLogSafe(config, 'verifyPassword', 'fail', 'user', id, 'invalid password format');
+      return { handled: true, status: 200, body: { success: false, error: '비밀번호는 숫자 4자리여야 합니다.' } };
+    }
+
     const row = await findReservationById(config, id);
     if (!row) {
+      recordAuthFailure('reservation', id, ip);
+      await appendAuditLogSafe(config, 'verifyPassword', 'fail', 'user', id, 'reservation not found');
       return { handled: true, status: 200, body: { success: false, error: '예약을 찾을 수 없습니다.' } };
     }
 
@@ -869,16 +962,24 @@ async function handleSupabasePostAction(action, body) {
     if (!isPlaceholderHash(row.password_hash)) {
       matched = String(row.password_hash || '') === inputHash;
     } else if (isStrictPasswordHashEnabled()) {
+      recordAuthFailure('reservation', id, ip);
+      await appendAuditLogSafe(config, 'verifyPassword', 'fail', 'user', id, 'strict mode placeholder hash');
       return { handled: true, status: 200, body: { success: false, error: '비밀번호 마이그레이션이 완료되지 않은 예약입니다. 관리자에게 문의해주세요.' } };
     } else {
+      recordAuthFailure('reservation', id, ip);
+      await appendAuditLogSafe(config, 'verifyPassword', 'fail', 'user', id, 'placeholder hash');
       return { handled: true, status: 200, body: { success: false, error: '비밀번호 해시 마이그레이션이 필요합니다. 관리자에게 문의해주세요.' } };
     }
 
     if (!matched) {
+      recordAuthFailure('reservation', id, ip);
+      await appendAuditLogSafe(config, 'verifyPassword', 'fail', 'user', id, 'password mismatch');
       return { handled: true, status: 200, body: { success: false, error: '비밀번호가 일치하지 않습니다.' } };
     }
 
+    clearAuthFailures('reservation', id, ip);
     const token = signReservationToken(id);
+    await appendAuditLogSafe(config, 'verifyPassword', 'success', 'user', id, 'verified');
     return { handled: true, status: 200, body: { success: true, token, message: '인증 성공' } };
   }
 
@@ -929,6 +1030,7 @@ async function handleSupabasePostAction(action, body) {
       team_name: newTeam,
       user_name: newUser
     });
+    await appendAuditLogSafe(config, 'updateReservation', 'success', 'user', id, newDate + ' ' + newFloor + ' ' + newStart + '-' + newEnd);
 
     return { handled: true, status: 200, body: { success: true, message: '예약이 수정되었습니다.' } };
   }
@@ -939,22 +1041,26 @@ async function handleSupabasePostAction(action, body) {
     if (isNonEmptyValue(body.adminToken)) {
       const adminCheck = verifyAdminAccess(body.adminToken || '');
       if (!adminCheck.ok) {
+        await appendAuditLogSafe(config, 'deleteReservation', 'fail', 'admin', id, 'invalid admin token');
         return { handled: true, status: 200, body: { success: false, error: '유효하지 않거나 만료된 인증 정보입니다.' } };
       }
     } else {
       const tokenCheck = verifyReservationToken(body.token, id);
       if (!tokenCheck.ok) {
+        await appendAuditLogSafe(config, 'deleteReservation', 'fail', 'user', id, 'invalid reservation token');
         return { handled: true, status: 200, body: { success: false, error: tokenCheck.error } };
       }
     }
 
     await supabaseRequest(config, 'DELETE', 'reservations', { id: 'eq.' + id });
+    await appendAuditLogSafe(config, 'deleteReservation', 'success', isNonEmptyValue(body.adminToken) ? 'admin' : 'user', id, 'deleted');
     return { handled: true, status: 200, body: { success: true, message: '예약이 취소되었습니다.' } };
   }
 
   if (action === 'addRoom') {
     const adminCheck = verifyAdminAccess(body.adminToken || '');
     if (!adminCheck.ok) {
+      await appendAuditLogSafe(config, 'addRoom', 'fail', 'admin', 'global', 'invalid admin token');
       return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
     }
     const floor = normalizeFloor(body.floor || '');
@@ -973,12 +1079,14 @@ async function handleSupabasePostAction(action, body) {
     }
 
     await supabaseRequest(config, 'POST', 'rooms', {}, [{ id: floor, floor, name, is_active: true }]);
+    await appendAuditLogSafe(config, 'addRoom', 'success', 'admin', floor, name);
     return { handled: true, status: 200, body: { success: true, message: '회의실이 추가되었습니다.' } };
   }
 
   if (action === 'updateRoom') {
     const adminCheck = verifyAdminAccess(body.adminToken || '');
     if (!adminCheck.ok) {
+      await appendAuditLogSafe(config, 'updateRoom', 'fail', 'admin', String(body.roomId || 'global'), 'invalid admin token');
       return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
     }
     const roomId = String(body.roomId || '').trim();
@@ -988,7 +1096,7 @@ async function handleSupabasePostAction(action, body) {
 
     const patch = {};
     if (body.name !== undefined) patch.name = sanitizeText(body.name, 50);
-    if (body.active !== undefined) patch.is_active = !!body.active;
+    if (body.active !== undefined) patch.is_active = parseBoolean(body.active);
     if (!Object.keys(patch).length) {
       return { handled: true, status: 200, body: { success: false, error: '변경할 값이 없습니다.' } };
     }
@@ -999,12 +1107,14 @@ async function handleSupabasePostAction(action, body) {
     }
 
     await supabaseRequest(config, 'PATCH', 'rooms', { id: 'eq.' + roomId }, patch);
+    await appendAuditLogSafe(config, 'updateRoom', 'success', 'admin', roomId, JSON.stringify(patch));
     return { handled: true, status: 200, body: { success: true, message: '회의실이 수정되었습니다.' } };
   }
 
   if (action === 'deleteRoom') {
     const adminCheck = verifyAdminAccess(body.adminToken || '');
     if (!adminCheck.ok) {
+      await appendAuditLogSafe(config, 'deleteRoom', 'fail', 'admin', String(body.roomId || 'global'), 'invalid admin token');
       return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
     }
     const roomId = String(body.roomId || '').trim();
@@ -1013,6 +1123,7 @@ async function handleSupabasePostAction(action, body) {
     }
 
     await supabaseRequest(config, 'DELETE', 'rooms', { id: 'eq.' + roomId });
+    await appendAuditLogSafe(config, 'deleteRoom', 'success', 'admin', roomId, 'deleted');
     return { handled: true, status: 200, body: { success: true, message: '회의실이 삭제되었습니다.' } };
   }
 
@@ -1035,8 +1146,6 @@ async function handleSupabasePostAction(action, body) {
 }
 
 export default async function handler(req, res) {
-  const upstream = process.env.APPS_SCRIPT_URL;
-
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ success: false, error: 'Method not allowed.' });
@@ -1058,8 +1167,8 @@ export default async function handler(req, res) {
     }
 
     try {
-      if (shouldServeGetFromSupabase(action, req.query || {})) {
-        const supabaseResult = await handleSupabaseGetAction(action, req.query || {});
+      if (shouldServeGetFromSupabase(action)) {
+        const supabaseResult = await handleSupabaseGetAction(action, req.query || {}, { ip: getClientIp(req) });
         if (supabaseResult.handled) {
           return res.status(supabaseResult.status).json(supabaseResult.body);
         }
@@ -1084,8 +1193,8 @@ export default async function handler(req, res) {
     }
 
     try {
-      if (shouldServePostFromSupabase(action, parsed)) {
-        const supabaseResult = await handleSupabasePostAction(action, parsed);
+      if (shouldServePostFromSupabase(action)) {
+        const supabaseResult = await handleSupabasePostAction(action, parsed, { ip: getClientIp(req) });
         if (supabaseResult.handled) {
           return res.status(supabaseResult.status).json(supabaseResult.body);
         }
@@ -1094,8 +1203,8 @@ export default async function handler(req, res) {
       return res.status(502).json({ success: false, error: 'Supabase 쓰기 처리 중 오류가 발생했습니다.' });
     }
 
-    return res.status(501).json({ success: false, error: '아직 Supabase로 이관되지 않은 POST 액션입니다.' });
+    return res.status(400).json({ success: false, error: '지원하지 않는 POST 액션입니다.' });
   }
 
-  return res.status(501).json({ success: false, error: '아직 Supabase로 이관되지 않은 GET 액션입니다.' });
+  return res.status(400).json({ success: false, error: '지원하지 않는 GET 액션입니다.' });
 }
