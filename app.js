@@ -2,7 +2,7 @@
 import {
   initNetworkBanner, registerServiceWorker, navigateTo, initInstallBanner,
   showToast, showLoading, openModal, closeModal, resetAndGoHome,
-  handleInstallClick, dismissInstallBanner
+  handleInstallClick, dismissInstallBanner, initModalListeners
 } from './js/ui/common.js';
 import { initDisplayMode, toggleDisplayFullscreen, loadDisplayData } from './js/ui/display.js';
 import { setTodayDate } from './js/utils.js';
