@@ -15,7 +15,7 @@ What it verifies:
 - reservation delete
 - admin auth entry
 
-The test uses an in-page mocked API (`fetch` override), so it is deterministic and does not require live Apps Script network access.
+The test uses an in-page mocked API (`fetch` override), so it is deterministic and does not require external network access.
 
 ## Operations roadmap
 
@@ -27,7 +27,7 @@ The test uses an in-page mocked API (`fetch` override), so it is deterministic a
 
 ## Audit logging
 
-- Server-side actions are written to an `Audit` sheet via `writeAudit(...)` in `Code.gs`.
+- Server-side actions are written to Supabase `audit_logs` table.
 - Logged events include reservation create/update/delete, user password verification, admin verification, and room management actions.
 - Security dashboard metrics are derived from these audit records (`getSecurityAlerts()`).
 
@@ -37,7 +37,7 @@ The test uses an in-page mocked API (`fetch` override), so it is deterministic a
 
 Operational metrics now support report preview/send for admins.
 
-### Script Properties
+### Vercel Environment Variables
 
 - `METRICS_REPORT_RECIPIENTS`: report recipients (comma / semicolon / newline separated emails)
 - `METRICS_REPORT_THRESHOLD_ADMIN_FAIL`: alert threshold for admin auth failures (default: `10`)
@@ -51,42 +51,29 @@ Operational metrics now support report preview/send for admins.
 - `runScheduledOperationalMetricsReport()`: trigger-safe function for time-based automatic sending
 
 
-## Vercel Function proxy (Step 1)
+## Vercel Function proxy (Supabase-only)
 
-To hide direct Apps Script endpoint usage from the browser, the frontend now calls `/api/proxy` and Vercel forwards requests to Apps Script server-side.
+Frontend calls `/api/proxy`, and the proxy serves all supported actions from Supabase.
 
 Required Vercel environment variables:
 
-- `APPS_SCRIPT_URL`: (선택) 해시 백필 스크립트 실행 시 Apps Script URL (`.../exec`)
-- `PROXY_SHARED_SECRET`: long random secret shared with Apps Script Script Property `PROXY_SHARED_SECRET`
-- `SUPABASE_READ_ENABLED`: `true`일 때 `getRooms`(관리자 includeInactive 포함), `getReservations`, `getReservationById`, `getOperationalChecks`, `getOperationalMetrics`를 Supabase에서 조회
 - `SUPABASE_URL`: Supabase project URL
 - `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (server only)
-- `SUPABASE_WRITE_ENABLED`: `true`일 때 예약 생성/인증/수정/취소를 Supabase로 처리
-- `PROXY_PASSWORD_PEPPER`: Apps Script `PASSWORD_PEPPER`와 동일 값 (비밀번호 해시 호환)
-- `PROXY_TOKEN_SECRET`: 프록시 예약 토큰 서명용 비밀키
-- `SUPABASE_STRICT_PASSWORD_HASH`: `true`면 placeholder 해시 예약을 Apps Script로 fallback하지 않고 차단
-- `PROXY_ADMIN_CODE`: 6자리 관리자 코드 (설정 시 `verifyAdmin`/회의실 관리를 proxy+Supabase에서 처리)
+- `PROXY_PASSWORD_PEPPER`: reservation password hashing pepper
+- `PROXY_TOKEN_SECRET`: proxy token signing secret
+- `SUPABASE_STRICT_PASSWORD_HASH`: `true`면 placeholder 해시 예약을 차단
+- `PROXY_ADMIN_CODE`: 6자리 관리자 코드
 
-Example (local dev):
-
-```bash
-vercel env add APPS_SCRIPT_URL
-vercel env add PROXY_SHARED_SECRET
-```
-
-Phase 2 hardening now included in `api/proxy`:
+Proxy hardening in `api/proxy`:
 - GET/POST action allowlist enforcement
 - action-specific required parameter/field checks
 - per-IP+method basic rate limiting (60 req/min, best-effort in serverless runtime)
-- optional shared-secret forwarding to Apps Script (`proxySecret`)
 
-Phase B execution (solo mode):
+Cutover summary:
 1. Supabase에 `sql/supabase_phase_a_schema.sql` 적용
 2. `python3 scripts/export_supabase_insert_sql.py` 실행 → 생성된 SQL을 Supabase SQL Editor에 붙여넣어 1차 이관 (또는 `scripts/migrate_sheets_to_supabase.py` 사용)
-3. Vercel env에 `SUPABASE_READ_ENABLED=true`, `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 설정
-4. 배포 후 조회 기능(getRooms/getReservations/getReservationById) 검증
-5. 문제 시 `SUPABASE_READ_ENABLED=false`로 즉시 롤백
+3. Vercel env에 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 및 proxy 인증 변수 설정
+4. 배포 후 조회/쓰기/관리자 기능 전체 검증
 
 ## Playwright 환경 빠른 구축 (로컬 PC)
 
@@ -135,24 +122,18 @@ python scripts/run_mock_e2e.py
   - 브라우저 다운로드가 차단될 수 있으니 네트워크 예외 필요
 
 
-## Phase D: password hash backfill (cutover)
+## Supabase Security Advisor 대응 (RLS)
 
-Before full Supabase-only auth cutover, backfill `reservations.password_hash` from Apps Script:
+Security Advisor에서 `rls_disabled_in_public` 또는 `sensitive_columns_exposed` 경고가 보이면,
+최신 `sql/supabase_phase_a_schema.sql`을 다시 적용하여 아래 테이블 RLS를 활성화하세요.
 
-```bash
-export APPS_SCRIPT_URL='https://script.google.com/macros/s/REPLACE_ME/exec'
-export ADMIN_TOKEN='YOUR_ADMIN_TOKEN'
-export PROXY_SHARED_SECRET='YOUR_SHARED_SECRET'
-export SUPABASE_URL='https://YOUR_PROJECT.supabase.co'
-export SUPABASE_SERVICE_ROLE_KEY='YOUR_SERVICE_ROLE_KEY'
-python3 scripts/backfill_password_hashes_to_supabase.py
-```
+- `public.rooms`
+- `public.reservations`
+- `public.audit_logs`
+- `public.auth_tokens`
 
-After successful backfill, set `SUPABASE_STRICT_PASSWORD_HASH=true` in Vercel.
-
-
-- Admin room actions (`addRoom`, `updateRoom`, `deleteRoom`) are served from Supabase when `SUPABASE_WRITE_ENABLED=true` and `PROXY_ADMIN_CODE` is configured.
-
+현재 스키마는 `anon`/`authenticated`에 대해 기본 차단 정책을 포함하며,
+Vercel proxy는 `SUPABASE_SERVICE_ROLE_KEY`로 서버 사이드 접근을 유지합니다.
 
 ## Operational API migration status
 

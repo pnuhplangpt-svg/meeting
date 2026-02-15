@@ -54,3 +54,50 @@ create table if not exists auth_tokens (
 );
 
 create index if not exists idx_auth_tokens_expires_at on auth_tokens(expires_at);
+
+-- ------------------------------------------------------------
+-- Security hardening: Enable RLS for all public API tables
+-- ------------------------------------------------------------
+alter table if exists rooms enable row level security;
+alter table if exists reservations enable row level security;
+alter table if exists audit_logs enable row level security;
+alter table if exists auth_tokens enable row level security;
+
+-- Deny by default for anon/authenticated roles.
+-- Service role (used by Vercel proxy) bypasses RLS and remains functional.
+drop policy if exists rooms_no_access_anon_auth on rooms;
+create policy rooms_no_access_anon_auth
+  on rooms
+  as permissive
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
+
+drop policy if exists reservations_no_access_anon_auth on reservations;
+create policy reservations_no_access_anon_auth
+  on reservations
+  as permissive
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
+
+drop policy if exists audit_logs_no_access_anon_auth on audit_logs;
+create policy audit_logs_no_access_anon_auth
+  on audit_logs
+  as permissive
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
+
+drop policy if exists auth_tokens_no_access_anon_auth on auth_tokens;
+create policy auth_tokens_no_access_anon_auth
+  on auth_tokens
+  as permissive
+  for all
+  to anon, authenticated
+  using (false)
+  with check (false);
+
