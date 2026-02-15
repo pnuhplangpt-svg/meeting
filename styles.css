@@ -1,5 +1,7 @@
     /* ─── Reset & Base ─────────────────────────────── */
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
       margin: 0;
       padding: 0;
       box-sizing: border-box;
@@ -19,8 +21,8 @@
       --dark: #1e3932;
       --black: #000000;
       --red: #d62b1e;
-      --shadow-sm: 0 1px 3px rgba(0,0,0,0.04);
-      --shadow-md: 0 2px 8px rgba(0,0,0,0.06);
+      --shadow-sm: 0 1px 3px rgba(0, 0, 0, 0.04);
+      --shadow-md: 0 2px 8px rgba(0, 0, 0, 0.06);
       --radius-sm: 12px;
       --radius-md: 16px;
       --radius-lg: 24px;
@@ -80,7 +82,7 @@
       z-index: 100;
       background: var(--white);
       padding: 16px 24px;
-      border-bottom: 1px solid rgba(0,0,0,0.04);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.04);
     }
 
     .header-back {
@@ -119,6 +121,41 @@
       color: var(--gray-text);
       margin-top: 2px;
       font-weight: 400;
+    }
+
+    .header-icon-btn {
+      position: absolute;
+      top: 16px;
+      right: 24px;
+      width: 40px;
+      height: 40px;
+      background: none;
+      border: none;
+      color: var(--gray-text);
+      /* Made darker for visibility */
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 50%;
+      transition: var(--transition);
+      z-index: 10;
+    }
+
+    .header-icon-btn:hover {
+      background: var(--gray-bg);
+      color: var(--dark);
+    }
+
+    .header-icon-btn:active {
+      background: var(--gray-bg);
+      color: var(--dark);
+      transform: scale(0.92);
+    }
+
+    .header-icon-btn svg {
+      width: 20px;
+      height: 20px;
     }
 
     /* ─── Section ──────────────────────────────────── */
@@ -650,7 +687,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(0,0,0,0.35);
+      background: rgba(0, 0, 0, 0.35);
       z-index: 500;
       display: flex;
       align-items: flex-end;
@@ -752,7 +789,7 @@
       left: 0;
       right: 0;
       bottom: 0;
-      background: rgba(255,255,255,0.7);
+      background: rgba(255, 255, 255, 0.7);
       z-index: 1000;
       display: flex;
       align-items: center;
@@ -768,7 +805,9 @@
     }
 
     @keyframes spin {
-      to { transform: rotate(360deg); }
+      to {
+        transform: rotate(360deg);
+      }
     }
 
     /* ─── Time Range Hint ──────────────────────────── */
@@ -855,21 +894,45 @@
     }
 
     @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(8px); }
-      to { opacity: 1; transform: translateY(0); }
+      from {
+        opacity: 0;
+        transform: translateY(8px);
+      }
+
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
     }
 
-    .stagger > * {
+    .stagger>* {
       opacity: 0;
       animation: fadeIn 0.4s ease forwards;
     }
 
-    .stagger > *:nth-child(1) { animation-delay: 0.05s; }
-    .stagger > *:nth-child(2) { animation-delay: 0.1s; }
-    .stagger > *:nth-child(3) { animation-delay: 0.15s; }
-    .stagger > *:nth-child(4) { animation-delay: 0.2s; }
-    .stagger > *:nth-child(5) { animation-delay: 0.25s; }
-    .stagger > *:nth-child(6) { animation-delay: 0.3s; }
+    .stagger>*:nth-child(1) {
+      animation-delay: 0.05s;
+    }
+
+    .stagger>*:nth-child(2) {
+      animation-delay: 0.1s;
+    }
+
+    .stagger>*:nth-child(3) {
+      animation-delay: 0.15s;
+    }
+
+    .stagger>*:nth-child(4) {
+      animation-delay: 0.2s;
+    }
+
+    .stagger>*:nth-child(5) {
+      animation-delay: 0.25s;
+    }
+
+    .stagger>*:nth-child(6) {
+      animation-delay: 0.3s;
+    }
 
     /* ─── Selection Info ───────────────────────────── */
     .selection-summary {
@@ -961,7 +1024,7 @@
       width: 44px;
       height: 44px;
       min-width: 44px;
-      background: rgba(255,255,255,0.2);
+      background: rgba(255, 255, 255, 0.2);
       border-radius: 12px;
       display: flex;
       align-items: center;
@@ -1010,7 +1073,7 @@
       height: 24px;
       background: none;
       border: none;
-      color: rgba(255,255,255,0.6);
+      color: rgba(255, 255, 255, 0.6);
       cursor: pointer;
       display: flex;
       align-items: center;
@@ -1073,13 +1136,13 @@
     }
 
     .admin-header .subtitle {
-      color: rgba(255,255,255,0.6);
+      color: rgba(255, 255, 255, 0.6);
       font-size: 13px;
       margin-top: 2px;
     }
 
     .admin-header .header-back {
-      color: rgba(255,255,255,0.8);
+      color: rgba(255, 255, 255, 0.8);
     }
 
     .admin-badge {
@@ -1431,7 +1494,7 @@
     .display-fs-overlay {
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.7);
+      background: rgba(0, 0, 0, 0.7);
       display: flex;
       flex-direction: column;
       align-items: center;
@@ -1994,4 +2057,3 @@
         font-size: 14px;
       }
     }
-  
