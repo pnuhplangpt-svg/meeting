@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="ko">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
@@ -9,379 +10,490 @@
   <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
   <title>J동 회의실 예약</title>
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23006241' width='100' height='100' rx='20'/><text x='50' y='62' text-anchor='middle' fill='white' font-size='40' font-family='sans-serif' font-weight='bold'>J</text></svg>">
-    <link rel="stylesheet" href="styles.css">
+  <link rel="apple-touch-icon"
+    href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><rect fill='%23006241' width='100' height='100' rx='20'/><text x='50' y='62' text-anchor='middle' fill='white' font-size='40' font-family='sans-serif' font-weight='bold'>J</text></svg>">
+  <link rel="stylesheet" href="styles.css">
 
 </head>
+
 <body>
 
-<div class="app" id="app">
+  <div class="app" id="app">
 
-  <!-- Toast Container -->
-  <div class="toast-container" id="toastContainer"></div>
+    <!-- Toast Container -->
+    <div class="toast-container" id="toastContainer"></div>
 
-  <!-- Offline Banner -->
-  <div class="offline-banner" id="offlineBanner" role="status" aria-live="polite">오프라인 상태 입니다. 예약 기능은 네트워크 연결 후 이용 가능합니다.</div>
+    <!-- Offline Banner -->
+    <div class="offline-banner" id="offlineBanner" role="status" aria-live="polite">오프라인 상태 입니다. 예약 기능은 네트워크 연결 후 이용
+      가능합니다.</div>
 
-  <!-- Loading Overlay -->
-  <div class="loading-overlay" id="loadingOverlay">
-    <div class="spinner"></div>
-  </div>
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay">
+      <div class="spinner"></div>
+    </div>
 
-  <!-- ════════ 1. 메인 화면 ════════ -->
-  <div class="screen active" id="screenHome">
-    <div class="header" style="display:flex; align-items:flex-start; justify-content:space-between;">
-      <div>
-        <h1>J동 회의실 예약</h1>
+    <!-- ════════ 1. 메인 화면 ════════ -->
+    <div class="screen active" id="screenHome">
+      <div class="header">
+        <h1>J-Meeting</h1>
         <div class="subtitle" id="todayDate"></div>
       </div>
-      <button class="admin-entry-btn" id="btnOpenAdminAuth" title="관리자">
-        <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-4 0v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83-2.83l.06-.06A1.65 1.65 0 0 0 4.68 15a1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1 0-4h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 2.83-2.83l.06.06A1.65 1.65 0 0 0 9 4.68a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 4 0v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 2.83l-.06.06A1.65 1.65 0 0 0 19.4 9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z"/></svg>
-      </button>
-    </div>
 
-    <!-- 앱 설치 배너 -->
-    <div class="install-banner" id="installBanner">
-      <button class="install-close" id="btnDismissInstallBanner" aria-label="닫기">&times;</button>
-      <div class="install-icon">
-        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" y1="15" x2="12" y2="3"/></svg>
-      </div>
-      <div class="install-text">
-        <div class="install-title">홈 화면에 앱 설치</div>
-        <div class="install-desc">더 빠르게 예약할 수 있어요</div>
-      </div>
-      <button class="install-btn" id="installBtn">설치</button>
-    </div>
-
-    <div class="section" style="padding-top:16px">
-      <div class="section-title">층 선택</div>
-      <div class="floor-grid stagger" id="floorGrid">
-        <!-- 서버에서 동적 로드 -->
-      </div>
-    </div>
-
-    <div class="divider"></div>
-
-    <div class="section">
-      <div class="section-title">내 예약 조회</div>
-      <button class="btn btn-outline" style="width:100%" data-action="go-my-reservations">
-        <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
-        예약 내역 보기
-      </button>
-    </div>
-
-    <div class="bottom-cta">
-      <button class="btn btn-primary" id="btnStartReserve" disabled>
-        층을 선택해주세요
-      </button>
-    </div>
-  </div>
-
-  <!-- ════════ 2. 예약 화면 ════════ -->
-  <div class="screen" id="screenReserve">
-    <div class="header">
-      <button class="header-back" data-action="go-home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        뒤로
-      </button>
-      <h1 id="reserveTitle">예약하기</h1>
-      <div class="subtitle" id="reserveSubtitle"></div>
-    </div>
-
-    <!-- 날짜 선택 -->
-    <div class="section">
-      <div class="section-title">날짜 선택</div>
-      <div class="calendar-container" id="calendar"></div>
-    </div>
-
-    <div class="divider"></div>
-
-    <!-- 시간 선택 -->
-    <div class="section" id="timeSection" style="display:none">
-      <div class="section-title">시간 선택</div>
-      <div class="section-desc">시작 시간과 종료 시간을 순서대로 선택하세요</div>
-      <div class="time-hint" id="timeHint">시작 시간을 선택하세요</div>
-      <div class="time-grid" id="timeGrid"></div>
-    </div>
-
-    <div class="divider" id="formDivider" style="display:none"></div>
-
-    <!-- 예약 정보 입력 -->
-    <div class="section" id="formSection" style="display:none">
-      <div class="section-title">예약 정보</div>
-
-      <div class="selection-summary" id="selectionSummary" style="margin-bottom:20px"></div>
-
-      <div class="input-group">
-        <label for="inputTeam">팀명</label>
-        <input type="text" id="inputTeam" placeholder="팀명을 입력하세요" maxlength="30" autocomplete="off">
-      </div>
-      <div class="input-group">
-        <label for="inputName">예약자명</label>
-        <input type="text" id="inputName" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off">
-      </div>
-      <div class="input-group" id="passwordInputGroup">
-        <label for="inputPassword">비밀번호 (숫자 4자리)</label>
-        <input type="password" id="inputPassword" placeholder="예약 수정/삭제 시 필요합니다" maxlength="4" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
+      <!-- 앱 설치 배너 -->
+      <div class="install-banner" id="installBanner">
+        <button class="install-close" id="btnDismissInstallBanner" aria-label="닫기">&times;</button>
+        <div class="install-icon">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4" />
+            <polyline points="7 10 12 15 17 10" />
+            <line x1="12" y1="15" x2="12" y2="3" />
+          </svg>
+        </div>
+        <div class="install-text">
+          <div class="install-title">홈 화면에 앱 설치</div>
+          <div class="install-desc">더 빠르게 예약할 수 있어요</div>
+        </div>
+        <button class="install-btn" id="installBtn">설치</button>
       </div>
 
-      <div class="edit-auth-notice" id="editAuthNotice" style="display:none;">
-        최초 비밀번호 인증이 완료되었습니다. 수정은 현재 인증으로 진행됩니다.
-      </div>
-    </div>
-
-    <div class="bottom-cta">
-      <button class="btn btn-primary" id="btnConfirmReserve" disabled>
-        예약 완료
-      </button>
-    </div>
-  </div>
-
-  <!-- ════════ 3. 내 예약 조회 화면 ════════ -->
-  <div class="screen" id="screenMyReservations">
-    <div class="header">
-      <button class="header-back" data-action="go-home">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        뒤로
-      </button>
-      <h1>예약 내역</h1>
-      <div class="subtitle">예약된 회의실 현황</div>
-    </div>
-
-    <div class="tab-bar">
-      <button class="tab-item active" data-tab="all" data-action="switch-tab">전체</button>
-      <button class="tab-item" data-tab="6F" data-action="switch-tab">6F</button>
-      <button class="tab-item" data-tab="7F" data-action="switch-tab">7F</button>
-      <button class="tab-item" data-tab="8F" data-action="switch-tab">8F</button>
-      <button class="tab-item" data-tab="9F" data-action="switch-tab">9F</button>
-    </div>
-
-    <div class="section" id="reservationsList"></div>
-  </div>
-
-  <!-- ════════ 4. 예약 완료 화면 ════════ -->
-  <div class="screen" id="screenComplete">
-    <div class="header">
-      <h1>예약 완료</h1>
-      <div class="subtitle">회의실이 예약되었습니다</div>
-    </div>
-
-    <div class="section">
-      <div style="text-align:center; margin-bottom:24px;">
-        <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-          <polyline points="22 4 12 14.01 9 11.01"/>
-        </svg>
-      </div>
-
-      <div class="reservation-card" id="completeCard"></div>
-
-      <div style="display:flex; gap:10px; margin-top:8px;">
-        <button class="btn btn-outline" style="flex:1" data-action="go-my-reservations">예약 내역 보기</button>
-        <button class="btn btn-primary" style="flex:1" data-action="reset-home">홈으로</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════════ 비밀번호 확인 모달 ════════ -->
-  <div class="modal-overlay" id="modalPassword">
-    <div class="modal">
-      <div class="modal-handle"></div>
-      <h3>비밀번호 확인</h3>
-      <div class="input-group">
-        <input type="password" id="modalPasswordInput" placeholder="4자리 비밀번호 입력" maxlength="4" inputmode="numeric" pattern="[0-9]*">
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalPassword">취소</button>
-        <button class="btn btn-primary" style="flex:2" id="modalPasswordConfirm">확인</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════════ 삭제 확인 모달 ════════ -->
-  <div class="modal-overlay" id="modalDelete">
-    <div class="modal">
-      <div class="modal-handle"></div>
-      <h3>예약을 삭제하시겠습니까?</h3>
-      <p style="text-align:center; color:var(--gray-text); font-size:14px; margin-bottom:8px;">이 작업은 되돌릴 수 없습니다.</p>
-      <div class="btn-group">
-        <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalDelete">취소</button>
-        <button class="btn btn-outline-red" style="flex:2" id="modalDeleteConfirm">삭제</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════════ 5. 관리자 화면 ════════ -->
-  <div class="screen" id="screenAdmin">
-    <div class="admin-header">
-      <button class="header-back" id="btnExitAdminMode">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 18 9 12 15 6"/></svg>
-        나가기
-      </button>
-      <div style="display:flex; align-items:center; gap:10px;">
-        <h1>관리자 모드</h1>
-        <span class="admin-badge">ADMIN</span>
-      </div>
-      <div class="subtitle">예약과 회의실을 관리할 수 있습니다</div>
-    </div>
-
-    <!-- 관리자 탭 -->
-    <div class="tab-bar" style="background:var(--white);">
-      <button class="tab-item active" data-admintab="reservations" data-action="switch-admin-tab">예약 관리</button>
-      <button class="tab-item" data-admintab="rooms" data-action="switch-admin-tab">회의실 관리</button>
-    </div>
-
-    <!-- 예약 관리 탭 -->
-    <div id="adminTabReservations">
       <div class="section">
-        <div class="admin-stat-grid" id="adminStats"></div>
-
-        <div class="admin-filter-row" id="adminFilterRow">
-          <button class="admin-filter-chip active" data-filter="all" data-action="admin-filter">전체</button>
-          <button class="admin-filter-chip" data-filter="today" data-action="admin-filter">오늘</button>
-          <button class="admin-filter-chip" data-filter="6F" data-action="admin-filter">6F</button>
-          <button class="admin-filter-chip" data-filter="7F" data-action="admin-filter">7F</button>
-          <button class="admin-filter-chip" data-filter="8F" data-action="admin-filter">8F</button>
-          <button class="admin-filter-chip" data-filter="9F" data-action="admin-filter">9F</button>
-          <button class="admin-filter-chip" data-filter="past" data-action="admin-filter">지난 예약</button>
+        <div class="section-title">층 선택</div>
+        <div class="floor-grid stagger" id="floorGrid">
+          <!-- 서버에서 동적 로드 -->
         </div>
-
-        <div class="admin-actions">
-          <button class="btn btn-outline" id="btnAdminRefresh">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
-            새로고침
-          </button>
-          <button class="btn btn-outline-red" id="btnAdminDeletePast">
-            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="3 6 5 6 21 6"/><path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/></svg>
-            지난 예약 정리
-          </button>
-        </div>
-
-        <div id="adminReservationsList"></div>
       </div>
-    </div>
 
-    <!-- 회의실 관리 탭 -->
-    <div id="adminTabRooms" style="display:none;">
+
+      <div class="divider"></div>
+
       <div class="section">
-        <div class="section-title">등록된 회의실</div>
-        <div id="adminRoomsList"></div>
-
-        <div class="divider" style="margin:20px -24px;"></div>
-
-        <div class="section-title">회의실 추가</div>
-        <div class="input-group">
-          <label for="newRoomFloor">층 (ID)</label>
-          <input type="text" id="newRoomFloor" placeholder="예: 10F, B1 등" maxlength="10" autocomplete="off">
-        </div>
-        <div class="input-group">
-          <label for="newRoomName">회의실 이름</label>
-          <input type="text" id="newRoomName" placeholder="예: 회의실, 대회의실" maxlength="30" autocomplete="off">
-        </div>
-        <button class="btn btn-primary" id="btnAdminAddRoom">회의실 추가</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════════ 관리자 인증 모달 ════════ -->
-  <div class="modal-overlay" id="modalAdminAuth">
-    <div class="modal">
-      <div class="modal-handle"></div>
-      <h3>관리자 인증</h3>
-      <p style="text-align:center; color:var(--gray-text); font-size:14px; margin-bottom:16px;">관리자 접근 코드 6자리를 입력하세요</p>
-      <div class="input-group">
-        <input type="password" id="adminCodeInput" placeholder="숫자 6자리 입력" maxlength="6" inputmode="numeric" pattern="[0-9]*" autocomplete="off">
-      </div>
-      <div class="btn-group">
-        <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminAuth">취소</button>
-        <button class="btn btn-primary" style="flex:2" id="btnVerifyAdminCode">접속</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════════ 관리자 삭제 확인 모달 ════════ -->
-  <div class="modal-overlay" id="modalAdminDelete">
-    <div class="modal">
-      <div class="modal-handle"></div>
-      <h3 id="adminDeleteTitle">예약을 삭제하시겠습니까?</h3>
-      <p id="adminDeleteDesc" style="text-align:center; color:var(--gray-text); font-size:14px; margin-bottom:8px;"></p>
-      <div class="btn-group">
-        <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminDelete">취소</button>
-        <button class="btn btn-outline-red" style="flex:2" id="adminDeleteConfirmBtn">삭제</button>
-      </div>
-    </div>
-  </div>
-
-  <!-- ════════ 6. 디스플레이 모드 (입구 패드용) ════════ -->
-  <div class="display-screen" id="screenDisplay">
-    <!-- 헤더 바 -->
-    <div class="display-header">
-      <div class="dh-left">
-        <span class="dh-floor" id="displayFloorName">--</span>
-        <span class="dh-name">J동 회의실</span>
-      </div>
-      <div class="dh-right">
-        <button class="dh-fullscreen-btn" id="btnDisplayRefresh" title="새로고침">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><polyline points="23 4 23 10 17 10"/><polyline points="1 20 1 14 7 14"/><path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"/></svg>
+        <div class="section-title">내 예약 조회</div>
+        <button class="btn btn-outline" style="width:100%" data-action="go-my-reservations">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+            stroke-linecap="round" stroke-linejoin="round">
+            <rect x="3" y="4" width="18" height="18" rx="2" ry="2" />
+            <line x1="16" y1="2" x2="16" y2="6" />
+            <line x1="8" y1="2" x2="8" y2="6" />
+            <line x1="3" y1="10" x2="21" y2="10" />
+          </svg>
+          예약 내역 보기
         </button>
-        <span class="dh-date" id="displayDate">--</span>
-        <span class="dh-clock" id="displayClock">--:--</span>
-        <button class="dh-fullscreen-btn" id="btnFullscreen" title="전체화면">
-          <svg id="iconExpand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><polyline points="15 3 21 3 21 9"/><polyline points="9 21 3 21 3 15"/><line x1="21" y1="3" x2="14" y2="10"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
-          <svg id="iconShrink" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none"><polyline points="4 14 10 14 10 20"/><polyline points="20 10 14 10 14 4"/><line x1="14" y1="10" x2="21" y2="3"/><line x1="3" y1="21" x2="10" y2="14"/></svg>
+      </div>
+
+      <div class="bottom-cta">
+        <button class="btn btn-primary" id="btnStartReserve" disabled>
+          층을 선택해주세요
         </button>
       </div>
     </div>
 
-    <!-- 본문: 상태 + 시간표 -->
-    <div class="display-body">
-      <!-- 현재 상태 패널 -->
-      <div class="display-panel-status" id="displayStatus">
-        <!-- 동적 렌더링 -->
+    <!-- ════════ 2. 예약 화면 ════════ -->
+    <div class="screen" id="screenReserve">
+      <div class="header">
+        <button class="header-back" data-action="go-home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          뒤로
+        </button>
+        <h1 id="reserveTitle">예약하기</h1>
+        <div class="subtitle" id="reserveSubtitle"></div>
       </div>
 
-      <!-- 시간표 패널 -->
-      <div class="display-panel-schedule" id="displaySchedule">
-        <div class="ds-timeline-header">오늘 일정</div>
-        <div class="ds-timeline" id="displayTimeline">
+      <!-- 날짜 선택 -->
+      <div class="section">
+        <div class="section-title">날짜 선택</div>
+        <div class="calendar-container" id="calendar"></div>
+      </div>
+
+      <div class="divider"></div>
+
+      <!-- 시간 선택 -->
+      <div class="section" id="timeSection" style="display:none">
+        <div class="section-title">시간 선택</div>
+        <div class="section-desc">시작 시간과 종료 시간을 순서대로 선택하세요</div>
+        <div class="time-hint" id="timeHint">시작 시간을 선택하세요</div>
+        <div class="time-grid" id="timeGrid"></div>
+      </div>
+
+      <div class="divider" id="formDivider" style="display:none"></div>
+
+      <!-- 예약 정보 입력 -->
+      <div class="section" id="formSection" style="display:none">
+        <div class="section-title">예약 정보</div>
+
+        <div class="selection-summary" id="selectionSummary" style="margin-bottom:20px"></div>
+
+        <div class="input-group">
+          <label for="inputTeam">팀명</label>
+          <input type="text" id="inputTeam" placeholder="팀명을 입력하세요" maxlength="30" autocomplete="off">
+        </div>
+        <div class="input-group">
+          <label for="inputName">예약자명</label>
+          <input type="text" id="inputName" placeholder="이름을 입력하세요" maxlength="20" autocomplete="off">
+        </div>
+        <div class="input-group" id="passwordInputGroup">
+          <label for="inputPassword">비밀번호 (숫자 4자리)</label>
+          <input type="password" id="inputPassword" placeholder="예약 수정/삭제 시 필요합니다" maxlength="4" inputmode="numeric"
+            pattern="[0-9]*" autocomplete="off">
+        </div>
+
+        <div class="edit-auth-notice" id="editAuthNotice" style="display:none;">
+          최초 비밀번호 인증이 완료되었습니다. 수정은 현재 인증으로 진행됩니다.
+        </div>
+      </div>
+
+      <div class="bottom-cta">
+        <button class="btn btn-primary" id="btnConfirmReserve" disabled>
+          예약 완료
+        </button>
+      </div>
+    </div>
+
+    <!-- ════════ 3. 내 예약 조회 화면 ════════ -->
+    <div class="screen" id="screenMyReservations">
+      <div class="header">
+        <button class="header-back" data-action="go-home">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          뒤로
+        </button>
+        <h1>예약 내역</h1>
+        <div class="subtitle">예약된 회의실 현황</div>
+      </div>
+
+      <div class="tab-bar">
+        <button class="tab-item active" data-tab="all" data-action="switch-tab">전체</button>
+        <button class="tab-item" data-tab="6F" data-action="switch-tab">6F</button>
+        <button class="tab-item" data-tab="7F" data-action="switch-tab">7F</button>
+        <button class="tab-item" data-tab="8F" data-action="switch-tab">8F</button>
+        <button class="tab-item" data-tab="9F" data-action="switch-tab">9F</button>
+      </div>
+
+      <div class="section" id="reservationsList"></div>
+    </div>
+
+    <!-- ════════ 4. 예약 완료 화면 ════════ -->
+    <div class="screen" id="screenComplete">
+      <div class="header">
+        <h1>예약 완료</h1>
+        <div class="subtitle">회의실이 예약되었습니다</div>
+      </div>
+
+      <div class="section">
+        <div style="text-align:center; margin-bottom:24px;">
+          <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="var(--green)" stroke-width="1.5"
+            stroke-linecap="round" stroke-linejoin="round">
+            <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
+            <polyline points="22 4 12 14.01 9 11.01" />
+          </svg>
+        </div>
+
+        <div class="reservation-card" id="completeCard"></div>
+
+        <div style="display:flex; gap:10px; margin-top:8px;">
+          <button class="btn btn-outline" style="flex:1" data-action="go-my-reservations">예약 내역 보기</button>
+          <button class="btn btn-primary" style="flex:1" data-action="reset-home">홈으로</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ 비밀번호 확인 모달 ════════ -->
+    <div class="modal-overlay" id="modalPassword">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h3>비밀번호 확인</h3>
+        <div class="input-group">
+          <input type="password" id="modalPasswordInput" placeholder="4자리 비밀번호 입력" maxlength="4" inputmode="numeric"
+            pattern="[0-9]*">
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalPassword">취소</button>
+          <button class="btn btn-primary" style="flex:2" id="modalPasswordConfirm">확인</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ 삭제 확인 모달 ════════ -->
+    <div class="modal-overlay" id="modalDelete">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h3>예약을 삭제하시겠습니까?</h3>
+        <div class="delete-summary" id="modalDeleteSummary"></div>
+        <p style="text-align:center; color:var(--gray-text); font-size:14px; margin-bottom:8px;">선택한 예약 정보가 맞는지 확인 후
+          삭제하세요. 이 작업은 되돌릴 수 없습니다.</p>
+        <div class="btn-group">
+          <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalDelete">취소</button>
+          <button class="btn btn-outline-red" style="flex:2" id="modalDeleteConfirm">삭제</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ 5. 관리자 화면 ════════ -->
+    <div class="screen" id="screenAdmin">
+      <div class="admin-header">
+        <button class="header-back" id="btnExitAdminMode">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"
+            stroke-linejoin="round">
+            <polyline points="15 18 9 12 15 6" />
+          </svg>
+          나가기
+        </button>
+        <div style="display:flex; align-items:center; gap:10px;">
+          <h1>관리자 모드</h1>
+          <span class="admin-badge">ADMIN</span>
+        </div>
+        <div class="subtitle">예약과 회의실을 관리할 수 있습니다</div>
+      </div>
+
+      <!-- 관리자 탭 -->
+      <div class="tab-bar">
+        <button class="tab-item active" data-admintab="reservations" data-action="switch-admin-tab">예약 관리</button>
+        <button class="tab-item" data-admintab="rooms" data-action="switch-admin-tab">회의실 관리</button>
+      </div>
+
+      <!-- 예약 관리 탭 -->
+      <div id="adminTabReservations">
+        <div class="section">
+          <div class="admin-stat-grid" id="adminStats"></div>
+
+          <div class="admin-filter-row" id="adminFilterRow">
+            <button class="admin-filter-chip active" data-filter="all" data-action="admin-filter">전체</button>
+            <button class="admin-filter-chip" data-filter="today" data-action="admin-filter">오늘</button>
+            <button class="admin-filter-chip" data-filter="6F" data-action="admin-filter">6F</button>
+            <button class="admin-filter-chip" data-filter="7F" data-action="admin-filter">7F</button>
+            <button class="admin-filter-chip" data-filter="8F" data-action="admin-filter">8F</button>
+            <button class="admin-filter-chip" data-filter="9F" data-action="admin-filter">9F</button>
+            <button class="admin-filter-chip" data-filter="past" data-action="admin-filter">지난 예약</button>
+          </div>
+
+          <div class="admin-actions">
+            <button class="btn btn-outline" id="btnAdminRefresh">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="23 4 23 10 17 10" />
+                <path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10" />
+              </svg>
+              새로고침
+            </button>
+            <button class="btn btn-outline" id="btnAdminChecks">운영 점검</button>
+            <button class="btn btn-outline" id="btnAdminMetrics">월간 지표</button>
+            <button class="btn btn-outline-red" id="btnAdminDeletePast">
+              <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                stroke-linecap="round" stroke-linejoin="round">
+                <polyline points="3 6 5 6 21 6" />
+                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2" />
+              </svg>
+              지난 예약 정리
+            </button>
+          </div>
+
+          <div id="adminReservationsList"></div>
+        </div>
+      </div>
+
+      <!-- 회의실 관리 탭 -->
+      <div id="adminTabRooms" style="display:none;">
+        <div class="section">
+          <div class="section-title">등록된 회의실</div>
+          <div id="adminRoomsList"></div>
+
+          <div class="divider" style="margin:20px -24px;"></div>
+
+          <div class="section-title">회의실 추가</div>
+          <div class="input-group">
+            <label for="newRoomFloor">층 (ID)</label>
+            <input type="text" id="newRoomFloor" placeholder="예: 10F, B1 등" maxlength="10" autocomplete="off">
+          </div>
+          <div class="input-group">
+            <label for="newRoomName">회의실 이름</label>
+            <input type="text" id="newRoomName" placeholder="예: 회의실, 대회의실" maxlength="30" autocomplete="off">
+          </div>
+          <button class="btn btn-primary" id="btnAdminAddRoom">회의실 추가</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ 관리자 인증 모달 ════════ -->
+    <div class="modal-overlay" id="modalAdminAuth">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h3>관리자 인증</h3>
+        <p style="text-align:center; color:var(--gray-text); font-size:14px; margin-bottom:16px;">관리자 접근 코드 6자리를 입력하세요
+        </p>
+        <div class="input-group">
+          <input type="password" id="adminCodeInput" placeholder="숫자 6자리 입력" maxlength="6" inputmode="numeric"
+            pattern="[0-9]*" autocomplete="off">
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminAuth">취소</button>
+          <button class="btn btn-primary" style="flex:2" id="btnVerifyAdminCode">접속</button>
+        </div>
+      </div>
+    </div>
+
+
+    <!-- ════════ 관리자 회의실 수정 모달 ════════ -->
+    <div class="modal-overlay" id="modalAdminRoomEdit">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h3>회의실 정보 수정</h3>
+        <p id="adminRoomEditDesc"
+          style="text-align:center; color:var(--gray-text); font-size:14px; margin-bottom:16px;"></p>
+        <div class="input-group">
+          <label for="adminRoomEditName">회의실 이름</label>
+          <input type="text" id="adminRoomEditName" placeholder="회의실 이름" maxlength="30" autocomplete="off">
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminRoomEdit">취소</button>
+          <button class="btn btn-primary" style="flex:2" id="adminRoomEditConfirmBtn">저장</button>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- ════════ 관리자 운영 점검 모달 ════════ -->
+    <div class="modal-overlay" id="modalAdminChecks">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h3>운영 점검 결과</h3>
+        <div id="adminChecksSummary" class="admin-checks-summary"></div>
+        <div id="adminChecksList" class="admin-checks-list"></div>
+        <div class="btn-group">
+          <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminChecks">닫기</button>
+        </div>
+      </div>
+    </div>
+
+
+
+    <!-- ════════ 관리자 월간 지표 모달 ════════ -->
+    <div class="modal-overlay" id="modalAdminMetrics">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h3>운영 지표 (최근 30일)</h3>
+        <div id="adminMetricsSummary" class="admin-checks-summary"></div>
+        <div id="adminMetricsGrid" class="admin-metrics-grid"></div>
+        <div id="adminMetricsTrend" class="admin-trend-box"></div>
+        <div class="admin-report-box">
+          <div class="admin-report-title">월간 리포트 미리보기</div>
+          <textarea id="adminMetricsReportText" class="admin-report-text" readonly></textarea>
+        </div>
+        <div class="btn-group">
+          <button class="btn btn-outline" id="btnAdminPreviewReport">리포트 새로고침</button>
+          <button class="btn btn-primary" id="btnAdminSendReport">이메일 발송</button>
+          <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminMetrics">닫기</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ 관리자 삭제 확인 모달 ════════ -->
+    <div class="modal-overlay" id="modalAdminDelete">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h3 id="adminDeleteTitle">예약을 삭제하시겠습니까?</h3>
+        <p id="adminDeleteDesc" style="text-align:center; color:var(--gray-text); font-size:14px; margin-bottom:8px;">
+        </p>
+        <div class="btn-group">
+          <button class="btn btn-ghost" data-action="close-modal" data-modal-id="modalAdminDelete">취소</button>
+          <button class="btn btn-outline-red" style="flex:2" id="adminDeleteConfirmBtn">삭제</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- ════════ 6. 디스플레이 모드 (입구 패드용) ════════ -->
+    <div class="display-screen" id="screenDisplay">
+      <!-- 헤더 바 -->
+      <div class="display-header">
+        <div class="dh-left">
+          <span class="dh-floor" id="displayFloorName">--</span>
+          <span class="dh-name">J동 회의실</span>
+        </div>
+        <div class="dh-right">
+          <button class="dh-fullscreen-btn" id="btnDisplayRefresh" title="새로고침">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+              stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="23 4 23 10 17 10" />
+              <polyline points="1 20 1 14 7 14" />
+              <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15" />
+            </svg>
+          </button>
+          <span class="dh-date" id="displayDate">--</span>
+          <span class="dh-clock" id="displayClock">--:--</span>
+          <button class="dh-fullscreen-btn" id="btnFullscreen" title="전체화면">
+            <svg id="iconExpand" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <polyline points="15 3 21 3 21 9" />
+              <polyline points="9 21 3 21 3 15" />
+              <line x1="21" y1="3" x2="14" y2="10" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+            <svg id="iconShrink" width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor"
+              stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="display:none">
+              <polyline points="4 14 10 14 10 20" />
+              <polyline points="20 10 14 10 14 4" />
+              <line x1="14" y1="10" x2="21" y2="3" />
+              <line x1="3" y1="21" x2="10" y2="14" />
+            </svg>
+          </button>
+        </div>
+      </div>
+
+      <!-- 본문: 상태 + 시간표 -->
+      <div class="display-body">
+        <!-- 현재 상태 패널 -->
+        <div class="display-panel-status" id="displayStatus">
           <!-- 동적 렌더링 -->
         </div>
+
+        <!-- 시간표 패널 -->
+        <div class="display-panel-schedule" id="displaySchedule">
+          <div class="ds-timeline-header">오늘 일정</div>
+          <div class="ds-timeline" id="displayTimeline">
+            <!-- 동적 렌더링 -->
+          </div>
+        </div>
+      </div>
+
+      <div class="display-refresh-indicator" id="displayRefreshInfo">--</div>
+    </div>
+
+    <!-- ════════ iOS 설치 안내 모달 ════════ -->
+    <div class="modal-overlay" id="modalIosGuide">
+      <div class="modal">
+        <div class="modal-handle"></div>
+        <h3>홈 화면에 앱 추가하기</h3>
+        <div class="ios-guide-steps">
+          <div class="ios-guide-step">
+            <div class="step-num">1</div>
+            <div class="step-text">하단 브라우저 메뉴에서<br><strong>공유 버튼</strong> <span style="font-size:18px">&#x1F4E4;</span>
+              을 탭하세요</div>
+          </div>
+          <div class="ios-guide-step">
+            <div class="step-num">2</div>
+            <div class="step-text">목록을 스크롤하여<br><strong>"홈 화면에 추가"</strong>를 탭하세요</div>
+          </div>
+          <div class="ios-guide-step">
+            <div class="step-num">3</div>
+            <div class="step-text">오른쪽 상단 <strong>"추가"</strong>를 탭하면<br>홈 화면에 앱이 설치됩니다</div>
+          </div>
+        </div>
+        <div class="btn-group" style="margin-top:24px">
+          <button class="btn btn-primary" data-action="close-modal" data-modal-id="modalIosGuide">확인</button>
+        </div>
       </div>
     </div>
 
-    <div class="display-refresh-indicator" id="displayRefreshInfo">--</div>
   </div>
 
-  <!-- ════════ iOS 설치 안내 모달 ════════ -->
-  <div class="modal-overlay" id="modalIosGuide">
-    <div class="modal">
-      <div class="modal-handle"></div>
-      <h3>홈 화면에 앱 추가하기</h3>
-      <div class="ios-guide-steps">
-        <div class="ios-guide-step">
-          <div class="step-num">1</div>
-          <div class="step-text">하단 브라우저 메뉴에서<br><strong>공유 버튼</strong> <span style="font-size:18px">&#x1F4E4;</span> 을 탭하세요</div>
-        </div>
-        <div class="ios-guide-step">
-          <div class="step-num">2</div>
-          <div class="step-text">목록을 스크롤하여<br><strong>"홈 화면에 추가"</strong>를 탭하세요</div>
-        </div>
-        <div class="ios-guide-step">
-          <div class="step-num">3</div>
-          <div class="step-text">오른쪽 상단 <strong>"추가"</strong>를 탭하면<br>홈 화면에 앱이 설치됩니다</div>
-        </div>
-      </div>
-      <div class="btn-group" style="margin-top:24px">
-        <button class="btn btn-primary" data-action="close-modal" data-modal-id="modalIosGuide">확인</button>
-      </div>
-    </div>
-  </div>
-
-</div>
-
-<script src="qrcode.min.js"></script>
-
-<script src="app.js"></script>
+  <script src="js/lib/qrcode.min.js"></script>
+  <script type="module" src="app.js"></script>
 
 </body>
+
 </html>

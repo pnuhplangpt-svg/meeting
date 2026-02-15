@@ -1,6 +1,6 @@
-# 배포 체크리스트 (Priority 1)
+# 배포 체크리스트 (Supabase-only)
 
-`OPERATIONS_ROADMAP.md`의 **1주차 1-1 (운영 체크리스트 확정)** 실행 문서입니다.
+`OPERATIONS_ROADMAP.md`의 운영 배포 점검 문서입니다.
 
 ---
 
@@ -18,14 +18,18 @@
 
 ### 1-1. 코드/정적 리소스
 - [ ] 최신 커밋 해시 확인
-- [ ] `app.js`, `styles.css`, `service-worker.js`, `index.html` 변경점 검토
+- [ ] `app.js`, `styles.css`, `service-worker.js`, `index.html`, `api/proxy.js` 변경점 검토
 - [ ] 서비스워커 버전(`CACHE_NAME`) 변경 여부 확인
 
 ### 1-2. 인증/보안 설정
-- [ ] Apps Script `Script Properties`에 `ADMIN_CODE` 설정 확인
-- [ ] Apps Script `Script Properties`에 `PASSWORD_PEPPER` 설정 확인
 - [ ] 관리자 코드 교체/보호 정책 확인(문서 기준)
 - [ ] `SECRETS_RUNBOOK.md` 최신 절차 기준으로 키 점검
+- [ ] Vercel 환경변수 `SUPABASE_URL` 설정 확인
+- [ ] Vercel 환경변수 `SUPABASE_SERVICE_ROLE_KEY` 설정 확인
+- [ ] Vercel 환경변수 `PROXY_PASSWORD_PEPPER` 설정 확인
+- [ ] Vercel 환경변수 `PROXY_TOKEN_SECRET` 설정 확인
+- [ ] Vercel 환경변수 `PROXY_ADMIN_CODE` 설정 확인
+- [ ] (선택) `SUPABASE_STRICT_PASSWORD_HASH=true` 전환 여부 확인
 
 ### 1-3. 기능 회귀 점검
 - [ ] 신규 예약 생성
@@ -38,6 +42,7 @@
 ### 1-4. 자동 점검
 - [ ] `node --check app.js`
 - [ ] `node --check service-worker.js`
+- [ ] `node --check api/proxy.js`
 - [ ] `python3 -m py_compile scripts/run_mock_e2e.py`
 
 ---
@@ -45,7 +50,8 @@
 ## 2. 배포 실행
 
 - [ ] 정적 파일 업로드/배포 완료
-- [ ] Apps Script 새 버전 배포 완료
+- [ ] Vercel Function(`/api/proxy`) 정상 배포 확인
+- [ ] `/api/proxy` 과도 호출 시 429 rate-limit 동작 샘플 확인
 - [ ] 배포 버전/시간 기록
 
 ---
@@ -53,7 +59,7 @@
 ## 3. 배포 직후 확인 (15분)
 
 - [ ] 홈 화면 진입/층 카드 표시
-- [ ] API 응답 정상(예약/회의실 조회)
+- [ ] API 응답 정상(예약/회의실 조회/쓰기)
 - [ ] 콘솔 치명 오류 없음
 - [ ] 오프라인 배너/온라인 복귀 동작 확인
 
@@ -69,7 +75,7 @@
 
 ### 롤백 절차
 1. 직전 정상 버전 정적 파일로 되돌림
-2. Apps Script 직전 배포 버전으로 되돌림
+2. 직전 정상 Vercel 환경변수 세트로 복구
 3. 캐시 영향 안내 공지 (필요 시)
 4. 장애 원인/시각/영향 범위 기록
 

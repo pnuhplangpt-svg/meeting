@@ -15,20 +15,65 @@ What it verifies:
 - reservation delete
 - admin auth entry
 
-The test uses an in-page mocked API (`fetch` override), so it is deterministic and does not require live Apps Script network access.
+The test uses an in-page mocked API (`fetch` override), so it is deterministic and does not require external network access.
 
 ## Operations roadmap
 
 - See `OPERATIONS_ROADMAP.md` for a phased hardening/operations plan (1-week / 2-week / 4-week).
 - Start execution with `DEPLOY_CHECKLIST.md` (Priority 1 deployment checklist).
 - For secrets/process control, follow `SECRETS_RUNBOOK.md` (Priority 1-2).
+- Supabase migration kickoff docs: `docs/SUPABASE_PHASE_A_PLAN.md` (Phase A design/prep).
+- Supabase migration execution (Phase B): `docs/SUPABASE_PHASE_B_EXECUTION.md` (solo-friendly runbook).
 
 ## Audit logging
 
-- Server-side actions are written to an `Audit` sheet via `writeAudit(...)` in `Code.gs`.
+- Server-side actions are written to Supabase `audit_logs` table.
 - Logged events include reservation create/update/delete, user password verification, admin verification, and room management actions.
 - Security dashboard metrics are derived from these audit records (`getSecurityAlerts()`).
 
+
+
+## Monthly metrics report automation
+
+Operational metrics now support report preview/send for admins.
+
+### Vercel Environment Variables
+
+- `METRICS_REPORT_RECIPIENTS`: report recipients (comma / semicolon / newline separated emails)
+- `METRICS_REPORT_THRESHOLD_ADMIN_FAIL`: alert threshold for admin auth failures (default: `10`)
+- `METRICS_REPORT_THRESHOLD_PASSWORD_FAIL`: alert threshold for reservation password failures (default: `20`)
+
+### Backend actions/functions
+
+- `GET action=getOperationalMetricsReport&adminToken=...`: returns report text preview and threshold/recipient info
+- `GET action=getOperationalMetricsTrend&adminToken=...`: returns 30-day daily trend + 7-day moving average for auth failures
+- `POST action=sendOperationalMetricsReport`: sends report email immediately (admin token required)
+- `runScheduledOperationalMetricsReport()`: trigger-safe function for time-based automatic sending
+
+
+## Vercel Function proxy (Supabase-only)
+
+Frontend calls `/api/proxy`, and the proxy serves all supported actions from Supabase.
+
+Required Vercel environment variables:
+
+- `SUPABASE_URL`: Supabase project URL
+- `SUPABASE_SERVICE_ROLE_KEY`: Supabase service role key (server only)
+- `PROXY_PASSWORD_PEPPER`: reservation password hashing pepper
+- `PROXY_TOKEN_SECRET`: proxy token signing secret
+- `SUPABASE_STRICT_PASSWORD_HASH`: `true`면 placeholder 해시 예약을 차단
+- `PROXY_ADMIN_CODE`: 6자리 관리자 코드
+
+Proxy hardening in `api/proxy`:
+- GET/POST action allowlist enforcement
+- action-specific required parameter/field checks
+- per-IP+method basic rate limiting (60 req/min, best-effort in serverless runtime)
+
+Cutover summary:
+1. Supabase에 `sql/supabase_phase_a_schema.sql` 적용
+2. `python3 scripts/export_supabase_insert_sql.py` 실행 → 생성된 SQL을 Supabase SQL Editor에 붙여넣어 1차 이관 (또는 `scripts/migrate_sheets_to_supabase.py` 사용)
+3. Vercel env에 `SUPABASE_URL`, `SUPABASE_SERVICE_ROLE_KEY` 및 proxy 인증 변수 설정
+4. 배포 후 조회/쓰기/관리자 기능 전체 검증
 
 ## Playwright 환경 빠른 구축 (로컬 PC)
 
@@ -75,3 +120,29 @@ python scripts/run_mock_e2e.py
   - `python -m playwright install firefox` 재실행
 - 회사망/프록시 환경:
   - 브라우저 다운로드가 차단될 수 있으니 네트워크 예외 필요
+
+
+## Supabase Security Advisor 대응 (RLS)
+
+Security Advisor에서 `rls_disabled_in_public` 또는 `sensitive_columns_exposed` 경고가 보이면,
+최신 `sql/supabase_phase_a_schema.sql`을 다시 적용하여 아래 테이블 RLS를 활성화하세요.
+
+- `public.rooms`
+- `public.reservations`
+- `public.audit_logs`
+- `public.auth_tokens`
+
+현재 스키마는 `anon`/`authenticated`에 대해 기본 차단 정책을 포함하며,
+Vercel proxy는 `SUPABASE_SERVICE_ROLE_KEY`로 서버 사이드 접근을 유지합니다.
+
+## Operational API migration status
+
+Proxy/Supabase now serves:
+- `getOperationalChecks`
+- `getOperationalMetrics`
+- `getSecurityAlerts`
+- `getOperationalMetricsTrend`
+- `getOperationalMetricsReport`
+- `sendOperationalMetricsReport`
+
+`METRICS_REPORT_RECIPIENTS` must be set in Vercel env for `sendOperationalMetricsReport`.
