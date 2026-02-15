@@ -282,6 +282,9 @@ function shouldServeGetFromSupabase(action, query) {
   if (action === 'getRooms') return true;
   if (action === 'getOperationalChecks') return true;
   if (action === 'getOperationalMetrics') return true;
+  if (action === 'getSecurityAlerts') return true;
+  if (action === 'getOperationalMetricsTrend') return true;
+  if (action === 'getOperationalMetricsReport') return true;
   return false;
 }
 
@@ -294,6 +297,7 @@ function shouldServePostFromSupabase(action, body) {
   if (action === 'addRoom') return true;
   if (action === 'updateRoom') return true;
   if (action === 'deleteRoom') return true;
+  if (action === 'sendOperationalMetricsReport') return true;
   return false;
 }
 
@@ -405,43 +409,10 @@ function isPlaceholderHash(hash) {
   return String(hash || '') === '__PHASE_B_PLACEHOLDER__';
 }
 
-async function verifyPasswordViaUpstream(upstream, sharedSecret, id, password) {
-  const body = { action: 'verifyPassword', id: String(id), password: String(password) };
-  if (sharedSecret) {
-    body.proxySecret = sharedSecret;
-  }
-
-  const res = await fetch(upstream, {
-    method: 'POST',
-    headers: { 'Content-Type': 'text/plain; charset=utf-8', Accept: 'application/json' },
-    body: JSON.stringify(body)
-  });
-  if (!res.ok) return { ok: false };
-  const payload = await res.json();
-  return { ok: !!payload.success };
-}
-
-async function verifyAdminViaUpstream(upstream, sharedSecret, adminToken) {
-  const u = new URL(upstream);
-  u.searchParams.set('action', 'getRooms');
-  u.searchParams.set('includeInactive', '1');
-  u.searchParams.set('adminToken', String(adminToken || ''));
-  if (sharedSecret) {
-    u.searchParams.set('proxySecret', sharedSecret);
-  }
-
-  const res = await fetch(u.toString(), { method: 'GET', headers: { Accept: 'application/json' } });
-  if (!res.ok) return { ok: false };
-  const payload = await res.json();
-  return { ok: !!payload.success };
-}
-
-async function verifyAdminAccess(adminToken, upstream, sharedSecret) {
+function verifyAdminAccess(adminToken) {
   const localCheck = verifyAdminTokenLocal(adminToken || '');
   if (localCheck.ok) return { ok: true };
-  if (isProxyAdminEnabled()) return localCheck;
-  const upstreamCheck = await verifyAdminViaUpstream(upstream, sharedSecret, adminToken || '');
-  return upstreamCheck.ok ? { ok: true } : { ok: false, error: '관리자 권한이 필요합니다.' };
+  return { ok: false, error: '관리자 권한이 필요합니다.' };
 }
 
 function isoDay(value) {
@@ -543,6 +514,124 @@ async function buildOperationalMetricsFromSupabase(config, windowDays) {
   };
 }
 
+function movingAverage(series, span) {
+  const out = [];
+  for (let i = 0; i < series.length; i++) {
+    const start = Math.max(0, i - span + 1);
+    const slice = series.slice(start, i + 1);
+    const sum = slice.reduce(function(acc, n) { return acc + Number(n || 0); }, 0);
+    out.push(Math.round((sum / slice.length) * 100) / 100);
+  }
+  return out;
+}
+
+function median(nums) {
+  const arr = nums.slice().sort(function(a, b) { return a - b; });
+  if (!arr.length) return 0;
+  const mid = Math.floor(arr.length / 2);
+  return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
+}
+
+function buildAnomalies(days, authFailSeries) {
+  const msgs = [];
+  if (authFailSeries.length >= 3) {
+    const n = authFailSeries.length;
+    if (authFailSeries[n - 3] < authFailSeries[n - 2] && authFailSeries[n - 2] < authFailSeries[n - 1] && authFailSeries[n - 1] >= 2) {
+      msgs.push('최근 3일 연속 인증 실패 증가 (' + days[n - 3] + '→' + days[n - 1] + ')');
+    }
+  }
+
+  if (authFailSeries.length >= 8) {
+    const baseline = authFailSeries.slice(0, authFailSeries.length - 1);
+    const today = Number(authFailSeries[authFailSeries.length - 1] || 0);
+    const med = median(baseline);
+    if (today >= med * 2 && (today - med) >= 3) {
+      msgs.push('인증 실패 급증 감지 (오늘 ' + today + '건, 기준 중앙값 ' + med + '건)');
+    }
+  }
+
+  return { hasAlert: msgs.length > 0, messages: msgs };
+}
+
+async function buildOperationalTrendFromSupabase(config, windowDays) {
+  const days = Number(windowDays || 30);
+  const dayKeys = listRecentDateKeys(days);
+  const windowStart = dayKeys[0] + 'T00:00:00.000Z';
+
+  const reservations = await supabaseSelect(config, 'reservations', {
+    select: 'created_at',
+    created_at: 'gte.' + windowStart,
+    order: 'created_at.asc'
+  });
+
+  const audits = await supabaseSelect(config, 'audit_logs', {
+    select: 'ts,action,result',
+    ts: 'gte.' + windowStart,
+    order: 'ts.asc'
+  });
+
+  const createByDay = {};
+  const authFailByDay = {};
+  dayKeys.forEach(function(d) { createByDay[d] = 0; authFailByDay[d] = 0; });
+
+  (reservations || []).forEach(function(r) {
+    const d = isoDay(r.created_at);
+    if (d && createByDay[d] !== undefined) createByDay[d]++;
+  });
+
+  (audits || []).forEach(function(a) {
+    const d = isoDay(a.ts);
+    if (!d || authFailByDay[d] === undefined) return;
+    const action = String(a.action || '');
+    const result = String(a.result || '');
+    if (result !== 'fail') return;
+    if (action === 'verifyPassword' || action === 'verifyAdmin') authFailByDay[d]++;
+  });
+
+  const createSeries = dayKeys.map(function(d) { return createByDay[d] || 0; });
+  const authFailSeries = dayKeys.map(function(d) { return authFailByDay[d] || 0; });
+
+  return {
+    windowDays: days,
+    days: dayKeys,
+    series: {
+      reservationCreate: createSeries,
+      authFail: authFailSeries,
+      authFailMovingAvg7: movingAverage(authFailSeries, 7)
+    },
+    anomalies: buildAnomalies(dayKeys, authFailSeries)
+  };
+}
+
+function getRecipients() {
+  const raw = String(process.env.METRICS_REPORT_RECIPIENTS || "").trim();
+  if (!raw) return [];
+  return raw.split(/[;,\n]/).map(function(x) { return x.trim(); }).filter(Boolean);
+}
+
+function buildReportText(metrics, trend) {
+  const status = (Number(metrics.adminFail || 0) >= 10 || Number(metrics.passwordFail || 0) >= 20 || (trend.anomalies && trend.anomalies.hasAlert)) ? '주의 필요' : '정상';
+  const now = new Date().toISOString().replace('T', ' ').slice(0, 19);
+  const lines = [
+    '[J동 회의실 예약] 월간 운영 리포트',
+    '',
+    '생성 시각: ' + now,
+    '집계 기간: 최근 ' + Number(metrics.windowDays || 30) + '일',
+    '상태: ' + status,
+    '',
+    '- 예약 생성: ' + Number(metrics.reservationCreate || 0) + '건',
+    '- 예약 수정: ' + Number(metrics.reservationUpdate || 0) + '건',
+    '- 예약 삭제: ' + Number(metrics.reservationDelete || 0) + '건',
+    '- 예약 비밀번호 실패: ' + Number(metrics.passwordFail || 0) + '건',
+    '- 관리자 인증 실패: ' + Number(metrics.adminFail || 0) + '건',
+    '- 회의실 변경 작업: ' + Number(metrics.roomChanges || 0) + '건',
+    '- 활성 회의실: ' + Number(metrics.activeRooms || 0) + '개',
+    '- 예정 예약: ' + Number(metrics.upcomingReservations || 0) + '건',
+    '- 이상치 탐지: ' + (trend.anomalies && trend.anomalies.hasAlert ? trend.anomalies.messages.join(' / ') : '정상')
+  ];
+  return { status: status, hasAlert: status !== '정상', text: lines.join('\n') };
+}
+
 async function findReservationById(config, id) {
   const rows = await supabaseSelect(config, 'reservations', {
     select: 'id,date,floor,start_time,end_time,team_name,user_name,password_hash,created_at',
@@ -578,7 +667,7 @@ async function hasTimeConflict(config, date, floor, startTime, endTime, excludeI
   return rows.length > 0;
 }
 
-async function handleSupabaseGetAction(action, query, upstream, sharedSecret) {
+async function handleSupabaseGetAction(action, query) {
   if (action === 'verifyAdmin' && isProxyAdminEnabled()) {
     const code = String(query.code || '').trim();
     if (!/^\d{6}$/.test(code)) {
@@ -633,7 +722,7 @@ async function handleSupabaseGetAction(action, query, upstream, sharedSecret) {
   }
 
   if (action === 'getOperationalChecks') {
-    const adminCheck = await verifyAdminAccess(query.adminToken || '', upstream, sharedSecret);
+    const adminCheck = verifyAdminAccess(query.adminToken || '');
     if (!adminCheck.ok) {
       return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
     }
@@ -642,7 +731,7 @@ async function handleSupabaseGetAction(action, query, upstream, sharedSecret) {
   }
 
   if (action === 'getOperationalMetrics') {
-    const adminCheck = await verifyAdminAccess(query.adminToken || '', upstream, sharedSecret);
+    const adminCheck = verifyAdminAccess(query.adminToken || '');
     if (!adminCheck.ok) {
       return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
     }
@@ -650,10 +739,55 @@ async function handleSupabaseGetAction(action, query, upstream, sharedSecret) {
     return { handled: true, status: 200, body: { success: true, data: data } };
   }
 
+  if (action === 'getSecurityAlerts') {
+    const adminCheck = verifyAdminAccess(query.adminToken || '');
+    if (!adminCheck.ok) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
+    }
+    const mins = 60;
+    const start = new Date(Date.now() - mins * 60 * 1000).toISOString();
+    const rows = await supabaseSelect(config, 'audit_logs', { select: 'ts,action,result,target_id', ts: 'gte.' + start, order: 'ts.asc' });
+    let adminFailCount = 0;
+    let reservationFailCount = 0;
+    const byReservation = {};
+    (rows || []).forEach(function(r) {
+      const action = String(r.action || '');
+      const result = String(r.result || '');
+      const targetId = String(r.target_id || '');
+      if (action === 'verifyAdmin' && result === 'fail') adminFailCount++;
+      if (action === 'verifyPassword' && result === 'fail') {
+        reservationFailCount++;
+        if (targetId) byReservation[targetId] = (byReservation[targetId] || 0) + 1;
+      }
+    });
+    const hotReservations = Object.keys(byReservation).map(function(id){ return { reservationId:id, failCount:byReservation[id] }; }).filter(function(x){ return x.failCount >= 3; }).sort(function(a,b){ return b.failCount-a.failCount; }).slice(0,10);
+    return { handled: true, status: 200, body: { success: true, data: { windowMinutes: mins, adminFailCount, reservationFailCount, hotReservations, hasAlert: adminFailCount >= 5 || hotReservations.length > 0 } } };
+  }
+
+  if (action === 'getOperationalMetricsTrend') {
+    const adminCheck = verifyAdminAccess(query.adminToken || '');
+    if (!adminCheck.ok) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
+    }
+    const trend = await buildOperationalTrendFromSupabase(config, 30);
+    return { handled: true, status: 200, body: { success: true, data: trend } };
+  }
+
+  if (action === 'getOperationalMetricsReport') {
+    const adminCheck = verifyAdminAccess(query.adminToken || '');
+    if (!adminCheck.ok) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
+    }
+    const metrics = await buildOperationalMetricsFromSupabase(config, 30);
+    const trend = await buildOperationalTrendFromSupabase(config, 30);
+    const report = buildReportText(metrics, trend);
+    return { handled: true, status: 200, body: { success: true, data: { reportText: report.text, hasAlert: report.hasAlert, status: report.status, thresholds: { adminFail: 10, passwordFail: 20 }, recipients: getRecipients() } } };
+  }
+
   return { handled: false };
 }
 
-async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
+async function handleSupabasePostAction(action, body) {
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
     return { handled: true, status: 500, body: { success: false, error: 'Supabase write mode is enabled but configuration is missing.' } };
@@ -737,8 +871,7 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
     } else if (isStrictPasswordHashEnabled()) {
       return { handled: true, status: 200, body: { success: false, error: '비밀번호 마이그레이션이 완료되지 않은 예약입니다. 관리자에게 문의해주세요.' } };
     } else {
-      const upstreamResult = await verifyPasswordViaUpstream(upstream, sharedSecret, id, password);
-      matched = upstreamResult.ok;
+      return { handled: true, status: 200, body: { success: false, error: '비밀번호 해시 마이그레이션이 필요합니다. 관리자에게 문의해주세요.' } };
     }
 
     if (!matched) {
@@ -804,7 +937,7 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
     const id = String(body.id || '').trim();
 
     if (isNonEmptyValue(body.adminToken)) {
-      const adminCheck = verifyAdminTokenLocal(body.adminToken || '');
+      const adminCheck = verifyAdminAccess(body.adminToken || '');
       if (!adminCheck.ok) {
         return { handled: true, status: 200, body: { success: false, error: '유효하지 않거나 만료된 인증 정보입니다.' } };
       }
@@ -820,7 +953,7 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
   }
 
   if (action === 'addRoom') {
-    const adminCheck = verifyAdminTokenLocal(body.adminToken || '');
+    const adminCheck = verifyAdminAccess(body.adminToken || '');
     if (!adminCheck.ok) {
       return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
     }
@@ -844,7 +977,7 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
   }
 
   if (action === 'updateRoom') {
-    const adminCheck = verifyAdminTokenLocal(body.adminToken || '');
+    const adminCheck = verifyAdminAccess(body.adminToken || '');
     if (!adminCheck.ok) {
       return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
     }
@@ -870,7 +1003,7 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
   }
 
   if (action === 'deleteRoom') {
-    const adminCheck = verifyAdminTokenLocal(body.adminToken || '');
+    const adminCheck = verifyAdminAccess(body.adminToken || '');
     if (!adminCheck.ok) {
       return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
     }
@@ -883,16 +1016,26 @@ async function handleSupabasePostAction(action, body, upstream, sharedSecret) {
     return { handled: true, status: 200, body: { success: true, message: '회의실이 삭제되었습니다.' } };
   }
 
+  if (action === 'sendOperationalMetricsReport') {
+    const adminCheck = verifyAdminAccess(body.adminToken || '');
+    if (!adminCheck.ok) {
+      return { handled: true, status: 200, body: { success: false, error: '관리자 권한이 필요합니다.' } };
+    }
+    const recipients = getRecipients();
+    if (!recipients.length) {
+      return { handled: true, status: 200, body: { success: false, error: 'METRICS_REPORT_RECIPIENTS 설정이 필요합니다.' } };
+    }
+    const metrics = await buildOperationalMetricsFromSupabase(config, 30);
+    const trend = await buildOperationalTrendFromSupabase(config, 30);
+    const report = buildReportText(metrics, trend);
+    return { handled: true, status: 200, body: { success: true, data: { recipients: recipients, reportText: report.text, status: report.status, hasAlert: report.hasAlert } } };
+  }
+
   return { handled: false };
 }
 
 export default async function handler(req, res) {
   const upstream = process.env.APPS_SCRIPT_URL;
-  const sharedSecret = (process.env.PROXY_SHARED_SECRET || '').trim();
-
-  if (!upstream) {
-    return res.status(500).json({ success: false, error: 'Server misconfiguration: APPS_SCRIPT_URL is not set.' });
-  }
 
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
@@ -907,9 +1050,6 @@ export default async function handler(req, res) {
     return res.status(429).json({ success: false, error: '요청이 너무 많습니다. 잠시 후 다시 시도해주세요.' });
   }
 
-  const target = new URL(upstream);
-  let requestBody = req.body;
-
   if (req.method === 'GET') {
     const action = req.query && req.query.action ? String(req.query.action).trim() : '';
     const policy = ensureGetActionPolicy(action, req.query || {});
@@ -919,7 +1059,7 @@ export default async function handler(req, res) {
 
     try {
       if (shouldServeGetFromSupabase(action, req.query || {})) {
-        const supabaseResult = await handleSupabaseGetAction(action, req.query || {}, upstream, sharedSecret);
+        const supabaseResult = await handleSupabaseGetAction(action, req.query || {});
         if (supabaseResult.handled) {
           return res.status(supabaseResult.status).json(supabaseResult.body);
         }
@@ -928,20 +1068,7 @@ export default async function handler(req, res) {
       return res.status(502).json({ success: false, error: 'Supabase 조회 중 오류가 발생했습니다.' });
     }
 
-    Object.keys(req.query || {}).forEach(function(key) {
-      const value = req.query[key];
-      if (Array.isArray(value)) {
-        value.forEach(function(item) { target.searchParams.append(key, String(item)); });
-        return;
-      }
-      if (value != null) {
-        target.searchParams.set(key, String(value));
-      }
-    });
 
-    if (sharedSecret) {
-      target.searchParams.set('proxySecret', sharedSecret);
-    }
   }
 
   if (req.method === 'POST') {
@@ -958,7 +1085,7 @@ export default async function handler(req, res) {
 
     try {
       if (shouldServePostFromSupabase(action, parsed)) {
-        const supabaseResult = await handleSupabasePostAction(action, parsed, upstream, sharedSecret);
+        const supabaseResult = await handleSupabasePostAction(action, parsed);
         if (supabaseResult.handled) {
           return res.status(supabaseResult.status).json(supabaseResult.body);
         }
@@ -967,36 +1094,8 @@ export default async function handler(req, res) {
       return res.status(502).json({ success: false, error: 'Supabase 쓰기 처리 중 오류가 발생했습니다.' });
     }
 
-    const nextBody = Object.assign({}, parsed);
-    if (sharedSecret) {
-      nextBody.proxySecret = sharedSecret;
-    }
-    requestBody = buildUpstreamPostBody(nextBody);
+    return res.status(501).json({ success: false, error: '아직 Supabase로 이관되지 않은 POST 액션입니다.' });
   }
 
-  try {
-    const upstreamResponse = await fetch(target.toString(), {
-      method: req.method,
-      headers: req.method === 'POST'
-        ? { 'Content-Type': 'text/plain; charset=utf-8', Accept: 'application/json' }
-        : { Accept: 'application/json' },
-      body: req.method === 'POST' ? requestBody : undefined
-    });
-
-    const text = await upstreamResponse.text();
-    res.status(upstreamResponse.status);
-
-    const contentType = upstreamResponse.headers.get('content-type') || '';
-    if (contentType.includes('application/json')) {
-      try {
-        return res.json(JSON.parse(text));
-      } catch (e) {
-        return res.send(text);
-      }
-    }
-
-    return res.send(text);
-  } catch (err) {
-    return res.status(502).json({ success: false, error: 'Upstream request failed.' });
-  }
+  return res.status(501).json({ success: false, error: '아직 Supabase로 이관되지 않은 GET 액션입니다.' });
 }

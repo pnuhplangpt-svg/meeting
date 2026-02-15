@@ -57,7 +57,7 @@ To hide direct Apps Script endpoint usage from the browser, the frontend now cal
 
 Required Vercel environment variables:
 
-- `APPS_SCRIPT_URL`: deployed Google Apps Script Web App URL (`.../exec`)
+- `APPS_SCRIPT_URL`: (선택) 해시 백필 스크립트 실행 시 Apps Script URL (`.../exec`)
 - `PROXY_SHARED_SECRET`: long random secret shared with Apps Script Script Property `PROXY_SHARED_SECRET`
 - `SUPABASE_READ_ENABLED`: `true`일 때 `getRooms`(관리자 includeInactive 포함), `getReservations`, `getReservationById`, `getOperationalChecks`, `getOperationalMetrics`를 Supabase에서 조회
 - `SUPABASE_URL`: Supabase project URL
@@ -152,3 +152,16 @@ After successful backfill, set `SUPABASE_STRICT_PASSWORD_HASH=true` in Vercel.
 
 
 - Admin room actions (`addRoom`, `updateRoom`, `deleteRoom`) are served from Supabase when `SUPABASE_WRITE_ENABLED=true` and `PROXY_ADMIN_CODE` is configured.
+
+
+## Operational API migration status
+
+Proxy/Supabase now serves:
+- `getOperationalChecks`
+- `getOperationalMetrics`
+- `getSecurityAlerts`
+- `getOperationalMetricsTrend`
+- `getOperationalMetricsReport`
+- `sendOperationalMetricsReport`
+
+`METRICS_REPORT_RECIPIENTS` must be set in Vercel env for `sendOperationalMetricsReport`.

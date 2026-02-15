@@ -85,7 +85,7 @@ order by floor;
 - `SUPABASE_READ_ENABLED=true`
 - `SUPABASE_URL=https://<project>.supabase.co`
 - `SUPABASE_SERVICE_ROLE_KEY=<service_role_key>`
-- 기존값 유지: `APPS_SCRIPT_URL`, `PROXY_SHARED_SECRET`
+- 기존값 유지: `PROXY_SHARED_SECRET` (백필 스크립트 실행 시에만 `APPS_SCRIPT_URL` 필요)
 
 ---
 
@@ -120,6 +120,7 @@ order by floor;
 - [ ] 비밀번호 확인 성공 (`verifyPassword`)
 - [ ] 예약 수정/취소 성공 (`updateReservation` / `deleteReservation`)
 - [ ] 관리자 로그인/회의실 추가·수정·삭제 성공 (`verifyAdmin`, `addRoom/updateRoom/deleteRoom`)
+- [ ] 운영 리포트 API 조회/발송 성공 (`getSecurityAlerts`, `getOperationalMetricsTrend`, `getOperationalMetricsReport`, `sendOperationalMetricsReport`)
 
 문제 시 롤백:
 - `SUPABASE_WRITE_ENABLED=false`
