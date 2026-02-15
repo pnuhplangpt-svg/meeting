@@ -336,7 +336,7 @@ async function appendAuditLogSafe(config, action, result, actorType, targetId, m
 }
 
 function shouldServeGetFromSupabase(action) {
-  if (action === 'verifyAdmin') return true;
+
   if (action === 'getReservations') return true;
   if (action === 'getReservationById') return true;
   if (action === 'getRooms') return true;
@@ -356,6 +356,7 @@ function shouldServePostFromSupabase(action) {
   if (action === 'addRoom') return true;
   if (action === 'updateRoom') return true;
   if (action === 'deleteRoom') return true;
+  if (action === 'verifyAdmin') return true;
   if (action === 'sendOperationalMetricsReport') return true;
   return false;
 }
