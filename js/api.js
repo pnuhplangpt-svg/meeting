@@ -66,7 +66,7 @@ export async function apiPost(body) {
     const response = await fetchWithTimeoutAndRetry(API_URL, {
         method: 'POST',
         redirect: 'follow',
-        headers: { 'Content-Type': 'text/plain' }, // GAS often needs text/plain to avoid CORS preflight issues or simple handling
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify(body)
     }, 0); // No retry for POST usually
 

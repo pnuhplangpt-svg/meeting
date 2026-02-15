@@ -4,7 +4,7 @@ const GET_ACTION_ALLOWLIST = new Set([
   'getReservations',
   'getReservationById',
   'getRooms',
-  'verifyAdmin',
+  'getRooms',
   'getSecurityAlerts',
   'getOperationalChecks',
   'getOperationalMetrics',
@@ -17,6 +17,7 @@ const POST_ACTION_ALLOWLIST = new Set([
   'updateReservation',
   'deleteReservation',
   'verifyPassword',
+  'verifyAdmin',
   'addRoom',
   'updateRoom',
   'deleteRoom',
@@ -25,7 +26,7 @@ const POST_ACTION_ALLOWLIST = new Set([
 
 const GET_ACTION_REQUIRED_PARAMS = {
   getReservationById: ['id'],
-  verifyAdmin: ['code'],
+  getReservationById: ['id'],
   getSecurityAlerts: ['adminToken'],
   getOperationalChecks: ['adminToken'],
   getOperationalMetrics: ['adminToken'],
@@ -38,6 +39,7 @@ const POST_ACTION_REQUIRED_FIELDS = {
   updateReservation: ['id', 'token'],
   deleteReservation: ['id'],
   verifyPassword: ['id', 'password'],
+  verifyAdmin: ['code'],
   addRoom: ['adminToken', 'floor', 'name'],
   updateRoom: ['adminToken', 'roomId'],
   deleteRoom: ['adminToken', 'roomId'],
@@ -267,7 +269,7 @@ function mapReservationRecord(row) {
 
 async function supabaseRequest(config, method, table, queryParams, body) {
   const url = new URL(config.url + '/rest/v1/' + table);
-  Object.keys(queryParams || {}).forEach(function(key) {
+  Object.keys(queryParams || {}).forEach(function (key) {
     if (queryParams[key] != null && queryParams[key] !== '') {
       url.searchParams.set(key, String(queryParams[key]));
     }
@@ -501,11 +503,11 @@ async function buildOperationalChecksFromSupabase(config) {
   checks.push({ key: 'activeRooms', ok: activeRooms.length > 0, detail: '활성 회의실 ' + activeRooms.length + '개' });
 
   const reservations = await supabaseSelect(config, 'reservations', { select: 'id,floor' });
-  const activeFloors = new Set(activeRooms.map(function(r) { return normalizeFloor(r.floor || ''); }));
-  const invalidRoomRefs = reservations.filter(function(r) { return !activeFloors.has(normalizeFloor(r.floor || '')); }).length;
+  const activeFloors = new Set(activeRooms.map(function (r) { return normalizeFloor(r.floor || ''); }));
+  const invalidRoomRefs = reservations.filter(function (r) { return !activeFloors.has(normalizeFloor(r.floor || '')); }).length;
   checks.push({ key: 'reservationRoomRef', ok: invalidRoomRefs === 0, detail: invalidRoomRefs === 0 ? '예약-회의실 참조 정상' : ('유효하지 않은 회의실 참조 예약 ' + invalidRoomRefs + '건') });
 
-  const okCount = checks.filter(function(c) { return c.ok; }).length;
+  const okCount = checks.filter(function (c) { return c.ok; }).length;
   return {
     total: checks.length,
     okCount: okCount,
@@ -535,7 +537,7 @@ async function buildOperationalMetricsFromSupabase(config, windowDays) {
   });
 
   const nowDay = new Date().toISOString().slice(0, 10);
-  const inWindowReservations = reservations.filter(function(r) {
+  const inWindowReservations = reservations.filter(function (r) {
     return r.created_at && new Date(r.created_at).toISOString() >= windowStart;
   });
 
@@ -545,7 +547,7 @@ async function buildOperationalMetricsFromSupabase(config, windowDays) {
   let adminFail = 0;
   let roomChanges = 0;
 
-  (auditRows || []).forEach(function(row) {
+  (auditRows || []).forEach(function (row) {
     const action = String(row.action || '');
     const result = String(row.result || '');
     if (action === 'updateReservation' && result === 'success') reservationUpdate++;
@@ -555,8 +557,8 @@ async function buildOperationalMetricsFromSupabase(config, windowDays) {
     if ((action === 'addRoom' || action === 'updateRoom' || action === 'deleteRoom') && result === 'success') roomChanges++;
   });
 
-  const activeRooms = roomRows.filter(function(r) { return !!r.is_active; }).length;
-  const upcomingReservations = reservations.filter(function(r) { return String(r.date || '') >= nowDay; }).length;
+  const activeRooms = roomRows.filter(function (r) { return !!r.is_active; }).length;
+  const upcomingReservations = reservations.filter(function (r) { return String(r.date || '') >= nowDay; }).length;
 
   return {
     windowDays: days,
@@ -576,14 +578,14 @@ function movingAverage(series, span) {
   for (let i = 0; i < series.length; i++) {
     const start = Math.max(0, i - span + 1);
     const slice = series.slice(start, i + 1);
-    const sum = slice.reduce(function(acc, n) { return acc + Number(n || 0); }, 0);
+    const sum = slice.reduce(function (acc, n) { return acc + Number(n || 0); }, 0);
     out.push(Math.round((sum / slice.length) * 100) / 100);
   }
   return out;
 }
 
 function median(nums) {
-  const arr = nums.slice().sort(function(a, b) { return a - b; });
+  const arr = nums.slice().sort(function (a, b) { return a - b; });
   if (!arr.length) return 0;
   const mid = Math.floor(arr.length / 2);
   return arr.length % 2 ? arr[mid] : (arr[mid - 1] + arr[mid]) / 2;
@@ -629,14 +631,14 @@ async function buildOperationalTrendFromSupabase(config, windowDays) {
 
   const createByDay = {};
   const authFailByDay = {};
-  dayKeys.forEach(function(d) { createByDay[d] = 0; authFailByDay[d] = 0; });
+  dayKeys.forEach(function (d) { createByDay[d] = 0; authFailByDay[d] = 0; });
 
-  (reservations || []).forEach(function(r) {
+  (reservations || []).forEach(function (r) {
     const d = isoDay(r.created_at);
     if (d && createByDay[d] !== undefined) createByDay[d]++;
   });
 
-  (audits || []).forEach(function(a) {
+  (audits || []).forEach(function (a) {
     const d = isoDay(a.ts);
     if (!d || authFailByDay[d] === undefined) return;
     const action = String(a.action || '');
@@ -645,8 +647,8 @@ async function buildOperationalTrendFromSupabase(config, windowDays) {
     if (action === 'verifyPassword' || action === 'verifyAdmin') authFailByDay[d]++;
   });
 
-  const createSeries = dayKeys.map(function(d) { return createByDay[d] || 0; });
-  const authFailSeries = dayKeys.map(function(d) { return authFailByDay[d] || 0; });
+  const createSeries = dayKeys.map(function (d) { return createByDay[d] || 0; });
+  const authFailSeries = dayKeys.map(function (d) { return authFailByDay[d] || 0; });
 
   return {
     windowDays: days,
@@ -663,7 +665,7 @@ async function buildOperationalTrendFromSupabase(config, windowDays) {
 function getRecipients() {
   const raw = String(process.env.METRICS_REPORT_RECIPIENTS || "").trim();
   if (!raw) return [];
-  return raw.split(/[;,\n]/).map(function(x) { return x.trim(); }).filter(Boolean);
+  return raw.split(/[;,\n]/).map(function (x) { return x.trim(); }).filter(Boolean);
 }
 
 function buildReportText(metrics, trend) {
@@ -725,35 +727,7 @@ async function hasTimeConflict(config, date, floor, startTime, endTime, excludeI
 }
 
 async function handleSupabaseGetAction(action, query, context) {
-  if (action === 'verifyAdmin') {
-    const config = getSupabaseConfig();
-    const ip = context && context.ip ? context.ip : 'unknown';
-    const throttle = checkAuthThrottle('admin', 'global', ip);
-    if (!throttle.allowed) {
-      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'rate limit exceeded');
-      return { handled: true, status: 200, body: { success: false, error: '인증 시도 횟수가 초과되었습니다. 잠시 후 다시 시도하세요.' } };
-    }
 
-    if (!isProxyAdminEnabled()) {
-      return { handled: true, status: 500, body: { success: false, error: 'PROXY_ADMIN_CODE 환경변수가 필요합니다.' } };
-    }
-
-    const code = String(query.code || '').trim();
-    if (!/^\d{6}$/.test(code)) {
-      recordAuthFailure('admin', 'global', ip);
-      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'invalid code format');
-      return { handled: true, status: 200, body: { success: false, error: '관리자 코드 형식이 올바르지 않습니다.' } };
-    }
-    if (code !== getProxyAdminCode()) {
-      recordAuthFailure('admin', 'global', ip);
-      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'code mismatch');
-      return { handled: true, status: 200, body: { success: false, error: '관리자 인증에 실패했습니다.' } };
-    }
-
-    clearAuthFailures('admin', 'global', ip);
-    await appendAuditLogSafe(config, 'verifyAdmin', 'success', 'admin', 'global', 'verified');
-    return { handled: true, status: 200, body: { success: true, token: signAdminToken(), message: '관리자 인증 성공' } };
-  }
 
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
@@ -826,7 +800,7 @@ async function handleSupabaseGetAction(action, query, context) {
     let adminFailCount = 0;
     let reservationFailCount = 0;
     const byReservation = {};
-    (rows || []).forEach(function(r) {
+    (rows || []).forEach(function (r) {
       const action = String(r.action || '');
       const result = String(r.result || '');
       const targetId = String(r.target_id || '');
@@ -836,7 +810,7 @@ async function handleSupabaseGetAction(action, query, context) {
         if (targetId) byReservation[targetId] = (byReservation[targetId] || 0) + 1;
       }
     });
-    const hotReservations = Object.keys(byReservation).map(function(id){ return { reservationId:id, failCount:byReservation[id] }; }).filter(function(x){ return x.failCount >= 3; }).sort(function(a,b){ return b.failCount-a.failCount; }).slice(0,10);
+    const hotReservations = Object.keys(byReservation).map(function (id) { return { reservationId: id, failCount: byReservation[id] }; }).filter(function (x) { return x.failCount >= 3; }).sort(function (a, b) { return b.failCount - a.failCount; }).slice(0, 10);
     return { handled: true, status: 200, body: { success: true, data: { windowMinutes: mins, adminFailCount, reservationFailCount, hotReservations, hasAlert: adminFailCount >= 5 || hotReservations.length > 0 } } };
   }
 
@@ -867,6 +841,35 @@ async function handleSupabasePostAction(action, body, context) {
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
     return { handled: true, status: 500, body: { success: false, error: 'Supabase 구성이 누락되었습니다.' } };
+  }
+
+  if (action === 'verifyAdmin') {
+    const ip = context && context.ip ? context.ip : 'unknown';
+    const throttle = checkAuthThrottle('admin', 'global', ip);
+    if (!throttle.allowed) {
+      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'rate limit exceeded');
+      return { handled: true, status: 200, body: { success: false, error: '인증 시도 횟수가 초과되었습니다. 잠시 후 다시 시도하세요.' } };
+    }
+
+    if (!isProxyAdminEnabled()) {
+      return { handled: true, status: 500, body: { success: false, error: 'PROXY_ADMIN_CODE 환경변수가 필요합니다.' } };
+    }
+
+    const code = String(body.code || '').trim();
+    if (!/^\d{6}$/.test(code)) {
+      recordAuthFailure('admin', 'global', ip);
+      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'invalid code format');
+      return { handled: true, status: 200, body: { success: false, error: '관리자 코드 형식이 올바르지 않습니다.' } };
+    }
+    if (code !== getProxyAdminCode()) {
+      recordAuthFailure('admin', 'global', ip);
+      await appendAuditLogSafe(config, 'verifyAdmin', 'fail', 'admin', 'global', 'code mismatch');
+      return { handled: true, status: 200, body: { success: false, error: '관리자 인증에 실패했습니다.' } };
+    }
+
+    clearAuthFailures('admin', 'global', ip);
+    await appendAuditLogSafe(config, 'verifyAdmin', 'success', 'admin', 'global', 'verified');
+    return { handled: true, status: 200, body: { success: true, token: signAdminToken(), message: '관리자 인증 성공' } };
   }
 
   if (action === 'createReservation') {
