@@ -2,7 +2,7 @@ from playwright.sync_api import sync_playwright
 import time
 import os
 
-def run():
+def test_reservation_flow():
     with sync_playwright() as p:
         browser = p.chromium.launch(headless=True)
         # Create context to grant permissions if needed, though usually not for localhost
@@ -71,7 +71,7 @@ def run():
                 floor_cards.first.click()
             else:
                 print("No floor cards found!")
-                return
+                raise Exception("No floor cards found")
 
             # Wait for button to enable
             time.sleep(0.5)
@@ -102,9 +102,10 @@ def run():
                 print("Date selected")
             else:
                 print("No valid days found")
+                raise Exception("No valid days found")
             
             # 6. Select Time
-            time.sleep(1) 
+            time.sleep(2) 
             
             time_section = page.locator("#timeSection")
             if time_section.is_visible():
@@ -115,28 +116,39 @@ def run():
                 
                 if count >= 2:
                     print("Selecting start time...")
-                    slots.nth(0).click()
-                    time.sleep(0.5)
+                    slots.nth(0).click(force=True)
+                    time.sleep(1)
                     print("Selecting end time...")
-                    slots.nth(1).click()
+                    slots.nth(1).click(force=True)
+                    time.sleep(1)
                     
                     # Check if Form appeared
                     form_section = page.locator("#formSection")
                     try:
-                        form_section.wait_for(state="visible", timeout=3000)
+                        form_section.wait_for(state="visible", timeout=5000)
                         print("Form section appeared! Test Passed.")
                     except:
                         print("Form section did not appear.")
                         page.screenshot(path="debug_form_fail.png")
+                        pass # Continue to allow full failure report
+                        
+                    if form_section.is_visible():
+                         pass
+                    else:
+                         raise Exception("Form section did not appear")
+
                 else:
                     print("Not enough available time slots.")
+                    raise Exception("Not enough available time slots")
             else:
                 print("Time section not visible. Calendar selection might have failed.")
                 page.screenshot(path="debug_time_fail.png")
+                raise Exception("Time section not visible")
 
         except Exception as e:
             print(f"Test Error: {e}")
             page.screenshot(path="debug_final_error.png")
+            raise e
             
         finally:
             browser.close()

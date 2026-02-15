@@ -40,7 +40,7 @@ export function startReservation() {
     showScreen('screenReserve');
 }
 
-function setReservationPasswordMode(isEditMode) {
+export function setReservationPasswordMode(isEditMode) {
     var passwordGroup = document.getElementById('passwordInputGroup');
     var editNotice = document.getElementById('editAuthNotice');
     var inputPassword = document.getElementById('inputPassword');

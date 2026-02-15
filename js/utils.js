@@ -39,7 +39,7 @@ export function normalizeDate(val) {
         String(d.getMonth() + 1).padStart(2, '0') + '-' +
         String(d.getDate()).padStart(2, '0');
     }
-  } catch (e) {}
+  } catch (e) { }
   return String(val);
 }
 
@@ -54,7 +54,7 @@ export function normalizeTime(val) {
       return String(d.getHours()).padStart(2, '0') + ':' +
         String(d.getMinutes()).padStart(2, '0');
     }
-  } catch (e) {}
+  } catch (e) { }
   return String(val);
 }
 
@@ -86,4 +86,14 @@ export function formatApiError(error, fallbackMessage) {
     return '서버 응답을 처리하지 못했습니다. 잠시 후 다시 시도해주세요.';
   }
   return fallback;
+}
+export function setTodayDate() {
+  const now = new Date();
+  const days = ['일', '월', '화', '수', '목', '금', '토'];
+  const str = now.getFullYear() + '년 ' +
+    (now.getMonth() + 1) + '월 ' +
+    now.getDate() + '일 ' +
+    days[now.getDay()] + '요일';
+  const el = document.getElementById('todayDate');
+  if (el) el.textContent = str;
 }

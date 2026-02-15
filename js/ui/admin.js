@@ -12,6 +12,24 @@ var adminSecurityAlerts = null;
 var adminCurrentFilter = 'all';
 var adminRooms = [];
 
+export function switchAdminTab(el) {
+    document.querySelectorAll('#screenAdmin .tab-item').forEach(function (t) {
+        t.classList.remove('active');
+    });
+    el.classList.add('active');
+
+    var tab = el.dataset.admintab;
+    const tabRes = document.getElementById('adminTabReservations');
+    const tabRooms = document.getElementById('adminTabRooms');
+
+    if (tabRes) tabRes.style.display = tab === 'reservations' ? '' : 'none';
+    if (tabRooms) tabRooms.style.display = tab === 'rooms' ? '' : 'none';
+
+    if (tab === 'rooms') {
+        loadAdminRooms();
+    }
+}
+
 // ═══════════════════════════════════════════════════════
 // 관리자 인증
 // ═══════════════════════════════════════════════════════

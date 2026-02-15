@@ -1,7 +1,46 @@
+import { state } from '../state.js';
+import { loadRoomsForHome } from './home.js';
+import { loadReservations, setReservationPasswordMode } from './reservation.js';
 
 // ═══════════════════════════════════════════════════════
 // 공통 UI 유틸리티 (배너, 모달, 토스트, 화면 전환)
 // ═══════════════════════════════════════════════════════
+
+export function navigateTo(screenId) {
+    // 화면별 최신 데이터 로드
+    if (screenId === 'screenHome') {
+        loadRoomsForHome();
+    }
+    if (screenId === 'screenMyReservations') {
+        loadReservations();
+    }
+    showScreen(screenId);
+}
+
+export function resetAndGoHome() {
+    state.reservationAuthToken = null;
+    state.editReservationId = null;
+    state.editOriginalReservation = null;
+    state.selectedFloor = null;
+    state.selectedDate = null;
+    state.selectedStartTime = null;
+    state.selectedEndTime = null;
+    state.deleteTargetReservation = null;
+
+    const btn = document.getElementById('btnStartReserve');
+    if (btn) {
+        btn.disabled = true;
+        btn.textContent = '층을 선택해주세요';
+    }
+
+    setReservationPasswordMode(false);
+    const title = document.getElementById('reserveTitle');
+    if (title) title.textContent = '예약하기';
+    const sub = document.getElementById('reserveSubtitle');
+    if (sub) sub.textContent = '회의실과 시간을 선택해주세요';
+
+    navigateTo('screenHome');
+}
 
 export function initNetworkBanner() {
     var banner = document.getElementById('offlineBanner');
@@ -20,7 +59,7 @@ export function initNetworkBanner() {
 // 서비스 워커
 // ═══════════════════════════════════════════════════════
 export function registerServiceWorker() {
-    if (!('serviceWorker' in navigator)) return;
+    if (!('serviceWorker' in navigator) || !navigator.serviceWorker) return;
 
     var hasControllerChangeReloaded = false;
     navigator.serviceWorker.addEventListener('controllerchange', function () {
