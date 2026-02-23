@@ -7,6 +7,12 @@ import {
 import { showLoading, showToast, openModal, closeModal, showScreen } from './common.js';
 
 // ═══════════════════════════════════════════════════════
+// 운영 시간 상수 (변경 시 이 곳만 수정)
+// ═══════════════════════════════════════════════════════
+const SLOT_OPEN = '07:00';
+const SLOT_CLOSE = '21:00';
+
+// ═══════════════════════════════════════════════════════
 // 예약 시작
 // ═══════════════════════════════════════════════════════
 export function startReservation() {
@@ -187,9 +193,10 @@ async function loadTimeSlots() {
         }
     } catch (e) {
         // 오프라인 모드
+    } finally {
+        showLoading(false);
     }
 
-    showLoading(false);
     if (state.editReservationId) {
         reservedSlots = reservedSlots.filter(function (r) {
             return String(r['예약ID']) !== String(state.editReservationId);
@@ -206,9 +213,6 @@ async function loadTimeSlots() {
 function renderTimeGrid(reservedSlots) {
     const grid = document.getElementById('timeGrid');
     let html = '';
-
-    var SLOT_OPEN = '07:00';
-    var SLOT_CLOSE = '21:00';
 
     for (let h = 0; h < 24; h++) {
         for (let m = 0; m < 60; m += 30) {
@@ -319,9 +323,9 @@ function renderSelectionSummary() {
     if (!summary) return;
 
     summary.innerHTML =
-        '<div class="sel-item"><span class="sel-label">층</span><span class="sel-value">' + state.selectedFloor + '</span></div>' +
-        '<div class="sel-item"><span class="sel-label">날짜</span><span class="sel-value">' + formatDateKr(state.selectedDate) + '</span></div>' +
-        '<div class="sel-item"><span class="sel-label">시간</span><span class="sel-value">' + state.selectedStartTime + ' ~ ' + state.selectedEndTime + '</span></div>' +
+        '<div class="sel-item"><span class="sel-label">층</span><span class="sel-value">' + escapeHtml(state.selectedFloor) + '</span></div>' +
+        '<div class="sel-item"><span class="sel-label">날짜</span><span class="sel-value">' + escapeHtml(formatDateKr(state.selectedDate)) + '</span></div>' +
+        '<div class="sel-item"><span class="sel-label">시간</span><span class="sel-value">' + escapeHtml(state.selectedStartTime) + ' ~ ' + escapeHtml(state.selectedEndTime) + '</span></div>' +
         (state.editReservationId ? '<div class="edit-change-box">' + getEditDiffRows() + '</div>' : '');
 }
 
@@ -406,8 +410,6 @@ async function submitReservation() {
             password: document.getElementById('inputPassword').value.trim()
         });
 
-        showLoading(false);
-
         if (res.success) {
             const completeData = res.data || {
                 '날짜': state.selectedDate,
@@ -423,8 +425,9 @@ async function submitReservation() {
             showToast(res.error || '예약에 실패했습니다.', 'error');
         }
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -543,8 +546,10 @@ export function switchTab(el) {
 }
 
 // ═══════════════════════════════════════════════════════
-// 수정 및 삭제 (Modal Logic Included)
+// 수정 및 삭제
 // ═══════════════════════════════════════════════════════
+
+// P1-1: onclick 재등록 제거 → state.pendingAction/pendingId만 설정
 export function requestEdit(id) {
     state.reservationAuthToken = null;
     state.pendingAction = 'edit';
@@ -552,13 +557,6 @@ export function requestEdit(id) {
     const input = document.getElementById('modalPasswordInput');
     if (input) input.value = '';
     openModal('modalPassword');
-
-    const confirmBtn = document.getElementById('modalPasswordConfirm');
-    if (confirmBtn) {
-        confirmBtn.onclick = function () {
-            verifyAndEdit(id);
-        };
-    }
 }
 
 export function requestDelete(id) {
@@ -569,13 +567,19 @@ export function requestDelete(id) {
     const input = document.getElementById('modalPasswordInput');
     if (input) input.value = '';
     openModal('modalPassword');
+}
 
-    const confirmBtn = document.getElementById('modalPasswordConfirm');
-    if (confirmBtn) {
-        confirmBtn.onclick = function () {
-            verifyAndDelete(id);
-        };
-    }
+// P1-1: 단일 리스너에서 호출되는 디스패처
+export function confirmPasswordModal() {
+    const action = state.pendingAction;
+    const id = state.pendingId;
+    if (action === 'edit') return verifyAndEdit(id);
+    if (action === 'delete') return verifyAndDelete(id);
+}
+
+// P1-1: 삭제 확인 모달 단일 리스너에서 호출
+export function confirmDeleteModal() {
+    executeDelete(state.pendingId, state.pendingDeleteToken);
 }
 
 async function verifyAndEdit(id) {
@@ -585,8 +589,8 @@ async function verifyAndEdit(id) {
         return;
     }
 
-    showLoading(true);
     closeModal('modalPassword');
+    showLoading(true);
 
     try {
         const res = await apiPost({
@@ -595,11 +599,7 @@ async function verifyAndEdit(id) {
             password: pw
         });
 
-        showLoading(false);
-
         if (res.success) {
-            // Need to parse token - helper in app.js?
-            // Let's implement generic token helper here or in utils
             const token = res.token || (res.data && res.data.token) || '';
             if (!token) {
                 showToast('서버가 토큰 인증을 지원하지 않습니다.', 'error');
@@ -644,8 +644,9 @@ async function verifyAndEdit(id) {
             showToast(res.error || '인증에 실패했습니다.', 'error');
         }
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -656,8 +657,8 @@ async function verifyAndDelete(id) {
         return;
     }
 
-    showLoading(true);
     closeModal('modalPassword');
+    showLoading(true);
 
     try {
         const verifyRes = await apiPost({
@@ -665,8 +666,6 @@ async function verifyAndDelete(id) {
             id: id,
             password: pw
         });
-
-        showLoading(false);
 
         if (!verifyRes.success) {
             showToast(verifyRes.error || '인증에 실패했습니다.', 'error');
@@ -679,44 +678,47 @@ async function verifyAndDelete(id) {
             return;
         }
 
+        // P1-1: token을 state에 저장, onclick 대신 confirmDeleteModal()이 읽음
+        state.pendingDeleteToken = token;
         state.deleteTargetReservation = state.reservations.find(function (r) {
             return String(r['예약ID']) === String(id);
         }) || null;
         renderDeleteSummary();
-
         openModal('modalDelete');
-        document.getElementById('modalDeleteConfirm').onclick = async function () {
-            closeModal('modalDelete');
-            showLoading(true);
-
-            try {
-                const res = await apiPost({
-                    action: 'deleteReservation',
-                    id: id,
-                    token: token
-                });
-
-                showLoading(false);
-
-                if (res.success) {
-                    showToast('예약이 삭제되었습니다.', 'success');
-                    await loadReservations();
-                    renderReservations();
-                } else {
-                    showToast(res.error || '삭제에 실패했습니다.', 'error');
-                }
-            } catch (e) {
-                showLoading(false);
-                showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
-            } finally {
-                state.deleteTargetReservation = null;
-                const box = document.getElementById('modalDeleteSummary');
-                if (box) box.innerHTML = '';
-            }
-        };
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+// P1-1: verifyAndDelete에서 분리된 실제 삭제 실행 함수
+async function executeDelete(id, token) {
+    closeModal('modalDelete');
+    showLoading(true);
+
+    try {
+        const res = await apiPost({
+            action: 'deleteReservation',
+            id: id,
+            token: token
+        });
+
+        if (res.success) {
+            showToast('예약이 삭제되었습니다.', 'success');
+            await loadReservations();
+            renderReservations();
+        } else {
+            showToast(res.error || '삭제에 실패했습니다.', 'error');
+        }
+    } catch (e) {
+        showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
+        state.pendingDeleteToken = null;
+        state.deleteTargetReservation = null;
+        const box = document.getElementById('modalDeleteSummary');
+        if (box) box.innerHTML = '';
     }
 }
 
@@ -759,8 +761,6 @@ async function submitUpdate(id) {
             userName: document.getElementById('inputName').value.trim()
         });
 
-        showLoading(false);
-
         if (res.success) {
             state.reservationAuthToken = null;
             state.editReservationId = null;
@@ -773,7 +773,8 @@ async function submitUpdate(id) {
             showToast(res.error || '수정에 실패했습니다.', 'error');
         }
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }

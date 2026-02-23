@@ -21,6 +21,16 @@ export function initDisplayMode() {
     var floor = (params.get('display') || '').trim().toUpperCase();
     if (!floor) return false;
 
+    // P1-4: 재진입 시 기존 타이머 정리
+    if (displayClockTimer) {
+        clearInterval(displayClockTimer);
+        displayClockTimer = null;
+    }
+    if (displayTimer) {
+        clearTimeout(displayTimer);
+        displayTimer = null;
+    }
+
     displayFloor = floor;
 
     // 모든 일반 화면 숨기기

@@ -16,8 +16,7 @@ import {
   openAdminAuth, exitAdminMode, adminRefresh, adminDeletePast, adminAddRoom,
   verifyAdminCode, switchAdminTab, adminFilter, adminDeleteOne,
   adminToggleRoom, adminRemoveRoom, adminEditRoom, adminLoadMetrics,
-  adminRunChecks, adminSendMetricsReport,
-  handleAdminDeleteConfirm, handleAdminRoomEditConfirm
+  adminRunChecks, adminSendMetricsReport
 } from './js/ui/admin.js';
 
 // ═══════════════════════════════════════════════════════
@@ -71,19 +70,6 @@ function bindUiActions() {
 
   var btnConfirmReserve = byId('btnConfirmReserve');
   if (btnConfirmReserve) btnConfirmReserve.addEventListener('click', handleConfirmReservation);
-
-  // P1-1: 모달 확인 버튼 단일 리스너 (재등록 방지)
-  var modalPasswordConfirm = byId('modalPasswordConfirm');
-  if (modalPasswordConfirm) modalPasswordConfirm.addEventListener('click', confirmPasswordModal);
-
-  var modalDeleteConfirm = byId('modalDeleteConfirm');
-  if (modalDeleteConfirm) modalDeleteConfirm.addEventListener('click', confirmDeleteModal);
-
-  var adminDeleteConfirmBtn = byId('adminDeleteConfirmBtn');
-  if (adminDeleteConfirmBtn) adminDeleteConfirmBtn.addEventListener('click', handleAdminDeleteConfirm);
-
-  var adminRoomEditConfirmBtn = byId('adminRoomEditConfirmBtn');
-  if (adminRoomEditConfirmBtn) adminRoomEditConfirmBtn.addEventListener('click', handleAdminRoomEditConfirm);
 
   // Admin mode
   var btnOpenAdminAuth = byId('btnOpenAdminAuth');

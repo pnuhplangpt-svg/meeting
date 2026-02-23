@@ -58,13 +58,41 @@ export function initNetworkBanner() {
 // ═══════════════════════════════════════════════════════
 // 서비스 워커
 // ═══════════════════════════════════════════════════════
+
+// P1-6: localStorage 안전 래퍼 (프라이빗 브라우징 SecurityError 방어)
+function safeStorageGet(key) {
+    try { return localStorage.getItem(key); } catch (e) { return null; }
+}
+
+function safeStorageSet(key, value) {
+    try { localStorage.setItem(key, value); } catch (e) { /* ignore */ }
+}
+
+// P1-3: setInterval ID 저장용 변수
+var _swUpdateInterval = null;
+
 export function registerServiceWorker() {
     if (!('serviceWorker' in navigator) || !navigator.serviceWorker) return;
 
     var hasControllerChangeReloaded = false;
+
+    // P1-5: SW 갱신 시 폼 입력 여부 확인 후 reload
     navigator.serviceWorker.addEventListener('controllerchange', function () {
         if (hasControllerChangeReloaded) return;
         hasControllerChangeReloaded = true;
+
+        var formFields = ['inputTeam', 'inputName', 'inputPassword'];
+        var hasFormData = formFields.some(function (id) {
+            var el = document.getElementById(id);
+            return el && el.value.trim().length > 0;
+        });
+
+        if (hasFormData) {
+            if (!confirm('앱이 업데이트되었습니다. 지금 새로고침하면 작성 중인 내용이 사라집니다.\n새로고침하시겠습니까?')) {
+                return;
+            }
+        }
+
         window.location.reload();
     });
 
@@ -84,7 +112,9 @@ export function registerServiceWorker() {
             handleInstallingWorker(registration.installing);
         });
 
-        setInterval(function () {
+        // P1-3: 중복 interval 방지
+        if (_swUpdateInterval) clearInterval(_swUpdateInterval);
+        _swUpdateInterval = setInterval(function () {
             registration.update().catch(function () { });
         }, 60 * 1000);
     }).catch(function () { });
@@ -194,7 +224,8 @@ function isInStandaloneMode() {
 export function initInstallBanner() {
     if (isInStandaloneMode()) return;
 
-    var dismissed = localStorage.getItem('installBannerDismissed');
+    // P1-6: safeStorageGet 사용
+    var dismissed = safeStorageGet('installBannerDismissed');
     if (dismissed) {
         var dismissedTime = parseInt(dismissed, 10);
         if (Date.now() - dismissedTime < 7 * 24 * 60 * 60 * 1000) return;
@@ -241,5 +272,6 @@ export function handleInstallClick() {
 export function dismissInstallBanner() {
     var banner = document.getElementById('installBanner');
     if (banner) banner.classList.remove('show');
-    localStorage.setItem('installBannerDismissed', String(Date.now()));
+    // P1-6: safeStorageSet 사용
+    safeStorageSet('installBannerDismissed', String(Date.now()));
 }

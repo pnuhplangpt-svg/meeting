@@ -1,8 +1,9 @@
-import { createHash, createHmac, timingSafeEqual, randomUUID } from 'node:crypto';
+import { createHash, createHmac, timingSafeEqual } from 'node:crypto';
 
 const GET_ACTION_ALLOWLIST = new Set([
   'getReservations',
   'getReservationById',
+  'getRooms',
   'getRooms',
   'getSecurityAlerts',
   'getOperationalChecks',
@@ -24,6 +25,7 @@ const POST_ACTION_ALLOWLIST = new Set([
 ]);
 
 const GET_ACTION_REQUIRED_PARAMS = {
+  getReservationById: ['id'],
   getReservationById: ['id'],
   getSecurityAlerts: ['adminToken'],
   getOperationalChecks: ['adminToken'],
@@ -47,24 +49,10 @@ const POST_ACTION_REQUIRED_FIELDS = {
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
 const RATE_LIMIT_MAX_REQUESTS = 60;
 const RESERVATION_TOKEN_TTL_SEC = 10 * 60;
-const ADMIN_TOKEN_TTL_SEC = 4 * 60 * 60;
+const ADMIN_TOKEN_TTL_SEC = 12 * 60 * 60;
 const AUTH_WINDOW_MS = 10 * 60 * 1000;
 const AUTH_MAX_ATTEMPTS = 10;
 const AUTH_LOCK_MS = 5 * 60 * 1000;
-
-function setSecurityHeaders(res) {
-  res.setHeader('X-Frame-Options', 'DENY');
-  res.setHeader('X-Content-Type-Options', 'nosniff');
-  res.setHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
-  res.setHeader('X-XSS-Protection', '1; mode=block');
-}
-
-function validateEnv() {
-  const required = ['SUPABASE_URL', 'SUPABASE_SERVICE_ROLE_KEY', 'PROXY_TOKEN_SECRET', 'PROXY_PASSWORD_PEPPER', 'PROXY_ADMIN_CODE'];
-  return required.filter(function (key) {
-    return !String(process.env[key] || '').trim();
-  });
-}
 
 function isStrictPasswordHashEnabled() {
   return String(process.env.SUPABASE_STRICT_PASSWORD_HASH || '').toLowerCase() === 'true';
@@ -180,7 +168,6 @@ function pruneAuthAttemptStore() {
 }
 
 function checkRateLimit(req) {
-  pruneRateLimitStore();
   const store = getRateLimitStore();
   const now = Date.now();
   const ip = getClientIp(req);
@@ -516,11 +503,10 @@ function verifyAdminAccess(adminToken) {
   return { ok: false, error: '관리자 권한이 필요합니다.' };
 }
 
-// P2-1: KST(Asia/Seoul) 기준 날짜 변환
 function isoDay(value) {
   const d = new Date(value);
   if (Number.isNaN(d.getTime())) return '';
-  return d.toLocaleString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 10);
+  return d.toISOString().slice(0, 10);
 }
 
 function listRecentDateKeys(days) {
@@ -528,7 +514,7 @@ function listRecentDateKeys(days) {
   const now = Date.now();
   for (let i = days - 1; i >= 0; i--) {
     const d = new Date(now - i * 24 * 60 * 60 * 1000);
-    keys.push(d.toLocaleString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 10));
+    keys.push(d.toISOString().slice(0, 10));
   }
   return keys;
 }
@@ -566,23 +552,20 @@ async function buildOperationalMetricsFromSupabase(config, windowDays) {
 
   const reservations = await supabaseSelect(config, 'reservations', {
     select: 'id,date,created_at',
-    order: 'created_at.asc',
-    limit: '1000'
+    order: 'created_at.asc'
   });
 
   const roomRows = await supabaseSelect(config, 'rooms', {
-    select: 'id,is_active',
-    limit: '1000'
+    select: 'id,is_active'
   });
 
   const auditRows = await supabaseSelect(config, 'audit_logs', {
     select: 'ts,action,result',
     ts: 'gte.' + windowStart,
-    order: 'ts.asc',
-    limit: '1000'
+    order: 'ts.asc'
   });
 
-  const nowDay = new Date().toLocaleString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 10);
+  const nowDay = new Date().toISOString().slice(0, 10);
   const inWindowReservations = reservations.filter(function (r) {
     return r.created_at && new Date(r.created_at).toISOString() >= windowStart;
   });
@@ -666,15 +649,13 @@ async function buildOperationalTrendFromSupabase(config, windowDays) {
   const reservations = await supabaseSelect(config, 'reservations', {
     select: 'created_at',
     created_at: 'gte.' + windowStart,
-    order: 'created_at.asc',
-    limit: '1000'
+    order: 'created_at.asc'
   });
 
   const audits = await supabaseSelect(config, 'audit_logs', {
     select: 'ts,action,result',
     ts: 'gte.' + windowStart,
-    order: 'ts.asc',
-    limit: '1000'
+    order: 'ts.asc'
   });
 
   const createByDay = {};
@@ -935,11 +916,6 @@ async function handleSupabasePostAction(action, body, context) {
     if (!isValidDateString(safeDate)) {
       return { handled: true, status: 200, body: { success: false, error: '날짜 형식이 올바르지 않습니다.' } };
     }
-    // P1-7: KST 기준 과거 날짜 차단
-    const todayKst = new Date().toLocaleString('en-CA', { timeZone: 'Asia/Seoul' }).slice(0, 10);
-    if (safeDate < todayKst) {
-      return { handled: true, status: 200, body: { success: false, error: '과거 날짜에는 예약할 수 없습니다.' } };
-    }
     if (!isValidTimeRange(safeStart, safeEnd)) {
       return { handled: true, status: 200, body: { success: false, error: '시간 범위가 올바르지 않습니다.' } };
     }
@@ -957,7 +933,7 @@ async function handleSupabasePostAction(action, body, context) {
       return { handled: true, status: 200, body: { success: false, error: '해당 시간에 이미 예약이 있습니다.' } };
     }
 
-    const id = randomUUID();
+    const id = createHash('sha1').update(safeDate + '|' + safeFloor + '|' + safeStart + '|' + safeEnd + '|' + Date.now()).digest('hex').slice(0, 12);
     await supabaseRequest(config, 'POST', 'reservations', {}, [{
       id,
       date: safeDate,
@@ -1202,13 +1178,6 @@ async function handleSupabasePostAction(action, body, context) {
 }
 
 export default async function handler(req, res) {
-  const missingEnv = validateEnv();
-  if (missingEnv.length > 0) {
-    return res.status(500).json({ success: false, error: '서버 환경변수가 올바르게 설정되지 않았습니다: ' + missingEnv.join(', ') });
-  }
-
-  setSecurityHeaders(res);
-
   if (req.method !== 'GET' && req.method !== 'POST') {
     res.setHeader('Allow', 'GET, POST');
     return res.status(405).json({ success: false, error: 'Method not allowed.' });

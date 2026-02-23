@@ -94,7 +94,7 @@ def main() -> int:
                       }
                       if (action === 'verifyAdmin') {
                         const code = u.searchParams.get('code');
-                        return mk(code === '041082' ? { success: true, token: 'admin-token' } : { success: false, error: '관리자 인증 실패' });
+                        return mk(code === '000000' ? { success: true, token: 'admin-token' } : { success: false, error: '관리자 인증 실패' });
                       }
                       return mk({ success: true, data: [] });
                     }
@@ -195,7 +195,7 @@ def main() -> int:
                   await new Promise(r => setTimeout(r, 250));
                   out.afterDelete = window.__mockStore.reservations.length;
 
-                  adminCodeInput.value = '041082';
+                  adminCodeInput.value = '000000';
                   await verifyAdminCode();
                   out.adminMode = adminMode;
 

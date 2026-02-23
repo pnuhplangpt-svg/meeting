@@ -37,7 +37,6 @@ export function openAdminAuth() {
     document.getElementById('adminCodeInput').value = '';
     openModal('modalAdminAuth');
 
-    // Enter key support
     const input = document.getElementById('adminCodeInput');
     input.onkeydown = function (e) {
         if (e.key === 'Enter') verifyAdminCode();
@@ -51,8 +50,8 @@ export async function verifyAdminCode() {
         return;
     }
 
-    showLoading(true);
     closeModal('modalAdminAuth');
+    showLoading(true);
 
     try {
         const res = await apiPost({
@@ -60,10 +59,7 @@ export async function verifyAdminCode() {
             code: code
         });
 
-        showLoading(false);
-
         if (res.success) {
-            // Token handling
             const token = res.token || (res.data && res.data.token) || '';
             if (!token) {
                 showToast('서버가 토큰 인증을 지원하지 않습니다.', 'error');
@@ -75,15 +71,15 @@ export async function verifyAdminCode() {
             showToast('관리자 모드로 진입했습니다.', 'success');
             showScreen('screenAdmin');
 
-            // Load initial admin data
             await adminRefresh();
             await loadAdminRooms();
         } else {
             showToast('코드가 올바르지 않습니다.', 'error');
         }
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -104,7 +100,6 @@ export async function adminRefresh() {
 
     try {
         const res = await apiGet('getReservations', {});
-        showLoading(false);
 
         if (res.success) {
             adminReservations = (res.data || []).map(function (r) {
@@ -124,8 +119,9 @@ export async function adminRefresh() {
             if (list) list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(res.error || '데이터를 불러올 수 없습니다.') + '</p></div>';
         }
     } catch (e) {
-        showLoading(false);
         if (list) list.innerHTML = '<div class="empty-state"><p>' + escapeHtml(formatApiError(e, '서버에 연결할 수 없습니다.')) + '</p></div>';
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -211,7 +207,6 @@ export function renderAdminList() {
         return;
     }
 
-    // 날짜별 그룹핑
     const grouped = {};
     filtered.forEach(function (r) {
         if (!grouped[r['날짜']]) grouped[r['날짜']] = [];
@@ -245,6 +240,7 @@ export function renderAdminList() {
     list.innerHTML = html;
 }
 
+// P1-1: onclick 제거 → dataset에 pendingAction/pendingId 저장
 export function adminDeleteOne(id) {
     const reservation = adminReservations.find(function (r) { return r['예약ID'] === id; });
     if (!reservation) return;
@@ -254,36 +250,12 @@ export function adminDeleteOne(id) {
         reservation['날짜'] + ' ' + reservation['시작시간'] + '~' + reservation['종료시간'] +
         ' (' + reservation['층'] + ' / ' + reservation['팀명'] + ')';
 
+    const confirmBtn = document.getElementById('adminDeleteConfirmBtn');
+    if (confirmBtn) {
+        confirmBtn.dataset.pendingAction = 'deleteOne';
+        confirmBtn.dataset.pendingId = id;
+    }
     openModal('modalAdminDelete');
-
-    document.getElementById('adminDeleteConfirmBtn').onclick = async function () {
-        closeModal('modalAdminDelete');
-        showLoading(true);
-
-        try {
-            const res = await apiPost({
-                action: 'deleteReservation',
-                id: id,
-                adminToken: state.adminAuthToken
-            });
-
-            showLoading(false);
-
-            if (res.success) {
-                showToast('예약이 삭제되었습니다.', 'success');
-                adminRefresh();
-            } else {
-                showToast(res.error || '삭제에 실패했습니다.', 'error');
-                if (res.error && (res.error.indexOf('비밀번호') >= 0 || res.error.indexOf('토큰') >= 0)) {
-                    showToast('관리자 코드가 올바르지 않습니다.', 'error');
-                    exitAdminMode();
-                }
-            }
-        } catch (e) {
-            showLoading(false);
-            showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
-        }
-    };
 }
 
 export function adminDeletePast() {
@@ -299,15 +271,76 @@ export function adminDeletePast() {
     document.getElementById('adminDeleteDesc').textContent =
         pastReservations.length + '건의 지난 예약이 삭제됩니다.';
 
+    const confirmBtn = document.getElementById('adminDeleteConfirmBtn');
+    if (confirmBtn) {
+        confirmBtn.dataset.pendingAction = 'deletePast';
+        delete confirmBtn.dataset.pendingId;
+    }
     openModal('modalAdminDelete');
+}
 
-    document.getElementById('adminDeleteConfirmBtn').onclick = async function () {
-        closeModal('modalAdminDelete');
-        showLoading(true);
+export function adminRemoveRoom(roomId) {
+    document.getElementById('adminDeleteTitle').textContent = '이 회의실을 삭제하시겠습니까?';
+    document.getElementById('adminDeleteDesc').textContent = roomId + ' 회의실이 영구 삭제됩니다.';
 
-        let successCount = 0;
-        let failCount = 0;
+    const confirmBtn = document.getElementById('adminDeleteConfirmBtn');
+    if (confirmBtn) {
+        confirmBtn.dataset.pendingAction = 'removeRoom';
+        confirmBtn.dataset.pendingId = roomId;
+    }
+    openModal('modalAdminDelete');
+}
 
+// P1-1: adminDeleteConfirmBtn 단일 리스너 디스패처
+export async function handleAdminDeleteConfirm() {
+    const btn = document.getElementById('adminDeleteConfirmBtn');
+    if (!btn) return;
+    const action = btn.dataset.pendingAction;
+    const id = btn.dataset.pendingId;
+
+    if (action === 'deleteOne') return _doAdminDeleteOne(id);
+    if (action === 'deletePast') return _doAdminDeletePast();
+    if (action === 'removeRoom') return _doAdminRemoveRoom(id);
+}
+
+async function _doAdminDeleteOne(id) {
+    closeModal('modalAdminDelete');
+    showLoading(true);
+
+    try {
+        const res = await apiPost({
+            action: 'deleteReservation',
+            id: id,
+            adminToken: state.adminAuthToken
+        });
+
+        if (res.success) {
+            showToast('예약이 삭제되었습니다.', 'success');
+            adminRefresh();
+        } else {
+            showToast(res.error || '삭제에 실패했습니다.', 'error');
+            if (res.error && (res.error.indexOf('비밀번호') >= 0 || res.error.indexOf('토큰') >= 0)) {
+                showToast('관리자 코드가 올바르지 않습니다.', 'error');
+                exitAdminMode();
+            }
+        }
+    } catch (e) {
+        showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function _doAdminDeletePast() {
+    closeModal('modalAdminDelete');
+    showLoading(true);
+
+    const today = formatDate(new Date());
+    const pastReservations = adminReservations.filter(function (r) { return r['날짜'] < today; });
+    let successCount = 0;
+    let failCount = 0;
+
+    try {
         for (let i = 0; i < pastReservations.length; i++) {
             try {
                 const res = await apiPost({
@@ -320,7 +353,6 @@ export function adminDeletePast() {
                 } else {
                     failCount++;
                     if (res.error && (res.error.indexOf('비밀번호') >= 0 || res.error.indexOf('토큰') >= 0)) {
-                        showLoading(false);
                         showToast('관리자 코드가 올바르지 않습니다.', 'error');
                         exitAdminMode();
                         return;
@@ -331,8 +363,6 @@ export function adminDeletePast() {
             }
         }
 
-        showLoading(false);
-
         if (failCount === 0) {
             showToast(successCount + '건의 지난 예약이 정리되었습니다.', 'success');
         } else {
@@ -340,7 +370,33 @@ export function adminDeletePast() {
         }
 
         adminRefresh();
-    };
+    } finally {
+        showLoading(false);
+    }
+}
+
+async function _doAdminRemoveRoom(roomId) {
+    closeModal('modalAdminDelete');
+    showLoading(true);
+
+    try {
+        const res = await apiPost({
+            action: 'deleteRoom',
+            adminToken: state.adminAuthToken,
+            roomId: roomId
+        });
+
+        if (res.success) {
+            showToast('회의실이 삭제되었습니다.', 'success');
+            await syncRoomViewsAfterAdminChange();
+        } else {
+            showToast(res.error || '삭제에 실패했습니다.', 'error');
+        }
+    } catch (e) {
+        showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
+    }
 }
 
 // ═══════════════════════════════════════════════════════
@@ -414,6 +470,7 @@ async function syncRoomViewsAfterAdminChange() {
     await loadRoomsForHome();
 }
 
+// P1-1: onclick 제거 → dataset.pendingRoomId 저장
 export function adminEditRoom(roomId) {
     const room = getAdminRoomById(roomId);
     if (!room) {
@@ -423,39 +480,52 @@ export function adminEditRoom(roomId) {
 
     document.getElementById('adminRoomEditDesc').textContent = room['층'] + ' / ' + room['회의실ID'];
     document.getElementById('adminRoomEditName').value = String(room['이름'] || '');
+
+    const confirmBtn = document.getElementById('adminRoomEditConfirmBtn');
+    if (confirmBtn) {
+        confirmBtn.dataset.pendingRoomId = roomId;
+    }
     openModal('modalAdminRoomEdit');
+}
 
-    document.getElementById('adminRoomEditConfirmBtn').onclick = async function () {
-        const name = document.getElementById('adminRoomEditName').value.trim();
-        if (!name) {
-            showToast('회의실 이름을 입력하세요.', 'error');
-            return;
+// P1-1: adminRoomEditConfirmBtn 단일 리스너 디스패처
+export async function handleAdminRoomEditConfirm() {
+    const btn = document.getElementById('adminRoomEditConfirmBtn');
+    if (!btn) return;
+    const roomId = btn.dataset.pendingRoomId;
+    if (!roomId) return;
+    return _doAdminEditRoom(roomId);
+}
+
+async function _doAdminEditRoom(roomId) {
+    const name = document.getElementById('adminRoomEditName').value.trim();
+    if (!name) {
+        showToast('회의실 이름을 입력하세요.', 'error');
+        return;
+    }
+
+    closeModal('modalAdminRoomEdit');
+    showLoading(true);
+
+    try {
+        const res = await apiPost({
+            action: 'updateRoom',
+            adminToken: state.adminAuthToken,
+            roomId: roomId,
+            name: name
+        });
+
+        if (res.success) {
+            showToast('회의실 정보가 수정되었습니다.', 'success');
+            await syncRoomViewsAfterAdminChange();
+        } else {
+            showToast(res.error || '수정에 실패했습니다.', 'error');
         }
-
-        closeModal('modalAdminRoomEdit');
-        showLoading(true);
-
-        try {
-            const res = await apiPost({
-                action: 'updateRoom',
-                adminToken: state.adminAuthToken,
-                roomId: roomId,
-                name: name
-            });
-
-            showLoading(false);
-
-            if (res.success) {
-                showToast('회의실 정보가 수정되었습니다.', 'success');
-                await syncRoomViewsAfterAdminChange();
-            } else {
-                showToast(res.error || '수정에 실패했습니다.', 'error');
-            }
-        } catch (e) {
-            showLoading(false);
-            showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
-        }
-    };
+    } catch (e) {
+        showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
+    }
 }
 
 export async function adminToggleRoom(roomId, active) {
@@ -469,8 +539,6 @@ export async function adminToggleRoom(roomId, active) {
             active: active
         });
 
-        showLoading(false);
-
         if (res.success) {
             showToast(active ? '회의실이 활성화되었습니다.' : '회의실이 비활성화되었습니다.', 'success');
             await syncRoomViewsAfterAdminChange();
@@ -478,8 +546,9 @@ export async function adminToggleRoom(roomId, active) {
             showToast(res.error || '변경에 실패했습니다.', 'error');
         }
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -502,8 +571,6 @@ export async function adminAddRoom() {
             name: name
         });
 
-        showLoading(false);
-
         if (res.success) {
             showToast('회의실이 추가되었습니다.', 'success');
             document.getElementById('newRoomFloor').value = '';
@@ -513,41 +580,10 @@ export async function adminAddRoom() {
             showToast(res.error || '추가에 실패했습니다.', 'error');
         }
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
-}
-
-export function adminRemoveRoom(roomId) {
-    document.getElementById('adminDeleteTitle').textContent = '이 회의실을 삭제하시겠습니까?';
-    document.getElementById('adminDeleteDesc').textContent = roomId + ' 회의실이 영구 삭제됩니다.';
-
-    openModal('modalAdminDelete');
-
-    document.getElementById('adminDeleteConfirmBtn').onclick = async function () {
-        closeModal('modalAdminDelete');
-        showLoading(true);
-
-        try {
-            const res = await apiPost({
-                action: 'deleteRoom',
-                adminToken: state.adminAuthToken,
-                roomId: roomId
-            });
-
-            showLoading(false);
-
-            if (res.success) {
-                showToast('회의실이 삭제되었습니다.', 'success');
-                await syncRoomViewsAfterAdminChange();
-            } else {
-                showToast(res.error || '삭제에 실패했습니다.', 'error');
-            }
-        } catch (e) {
-            showLoading(false);
-            showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
-        }
-    };
 }
 
 // ═══════════════════════════════════════════════════════
@@ -558,7 +594,6 @@ export async function adminLoadMetrics() {
     try {
         const metricsRes = await apiGet('getOperationalMetrics', { adminToken: state.adminAuthToken });
         if (!metricsRes.success) {
-            showLoading(false);
             showToast(metricsRes.error || '운영 지표 조회에 실패했습니다.', 'error');
             return;
         }
@@ -569,11 +604,11 @@ export async function adminLoadMetrics() {
         const trendRes = await apiGet('getOperationalMetricsTrend', { adminToken: state.adminAuthToken });
         renderAdminMetricsTrend(trendRes.success ? (trendRes.data || {}) : {});
 
-        showLoading(false);
         await adminPreviewMetricsReport();
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -654,7 +689,6 @@ export async function adminPreviewMetricsReport() {
     showLoading(true);
     try {
         const res = await apiGet('getOperationalMetricsReport', { adminToken: state.adminAuthToken });
-        showLoading(false);
         if (!res.success) {
             showToast(res.error || '리포트 조회에 실패했습니다.', 'error');
             return;
@@ -667,8 +701,9 @@ export async function adminPreviewMetricsReport() {
             showToast('리포트 수신자: ' + data.recipients.join(', '), data.hasAlert ? 'warning' : 'success');
         }
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -682,7 +717,6 @@ export async function adminSendMetricsReport() {
             action: 'sendOperationalMetricsReport',
             adminToken: state.adminAuthToken
         });
-        showLoading(false);
 
         if (!res.success) {
             showToast(res.error || '리포트 발송에 실패했습니다.', 'error');
@@ -693,8 +727,9 @@ export async function adminSendMetricsReport() {
         const recipients = Array.isArray(data.recipients) ? data.recipients.join(', ') : '';
         showToast('리포트 발송 완료' + (recipients ? ' (' + recipients + ')' : ''), 'success');
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }
 
@@ -702,7 +737,6 @@ export async function adminRunChecks() {
     showLoading(true);
     try {
         const res = await apiGet('getOperationalChecks', { adminToken: state.adminAuthToken });
-        showLoading(false);
 
         if (!res.success) {
             showToast(res.error || '운영 점검에 실패했습니다.', 'error');
@@ -727,7 +761,8 @@ export async function adminRunChecks() {
 
         openModal('modalAdminChecks');
     } catch (e) {
-        showLoading(false);
         showToast(formatApiError(e, '서버 연결에 실패했습니다.'), 'error');
+    } finally {
+        showLoading(false);
     }
 }
