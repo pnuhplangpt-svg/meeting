@@ -1,4 +1,5 @@
 {
+  "buildCommand": "python3 scripts/bump_sw_cache.py",
   "headers": [
     {
       "source": "/(.*)",

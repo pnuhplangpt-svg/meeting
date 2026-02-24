@@ -1583,17 +1583,17 @@
     }
 
     .dp-time-range {
-      font-size: 20px;
+      font-size: 16px;
       color: var(--gray-text);
-      margin-bottom: 12px;
+      margin-bottom: 10px;
       letter-spacing: 0.5px;
     }
 
     .dp-state-text {
-      font-size: 52px;
+      font-size: 58px;
       font-weight: 800;
       color: var(--dark);
-      line-height: 1.15;
+      line-height: 1.1;
     }
 
     .dp-state-text.inuse {
@@ -1605,35 +1605,62 @@
     }
 
     .dp-meeting-info {
+      margin-top: 28px;
+    }
+
+    /* 항목 행: label + value 가로 정렬 */
+    .dp-field {
+      display: flex;
+      align-items: baseline;
+      gap: 16px;
       margin-top: 20px;
     }
 
+    .dp-field:first-child {
+      margin-top: 0;
+    }
+
+    /* 항목 레이블 (팀명/예약자/시간) */
+    .dp-field .k {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--gray-mid);
+      min-width: 52px;
+      flex-shrink: 0;
+      letter-spacing: 0.4px;
+      text-transform: uppercase;
+      line-height: 1.5;
+    }
+
     .dp-meeting-team {
-      font-size: 30px;
+      font-size: 34px;
       font-weight: 700;
       color: var(--dark);
+      line-height: 1.3;
     }
 
     .dp-meeting-user {
       font-size: 22px;
       color: var(--gray-text);
-      margin-top: 6px;
+      line-height: 1.4;
+      margin-top: 0;
     }
 
     .dp-meeting-time {
-      font-size: 22px;
+      font-size: 24px;
       color: var(--green);
       font-weight: 600;
-      margin-top: 10px;
+      line-height: 1.4;
+      margin-top: 0;
     }
 
     .dp-next {
       margin-top: 28px;
       padding-top: 20px;
       border-top: 1px solid var(--gray-light);
-      font-size: 22px;
+      font-size: 20px;
       color: var(--gray-text);
-      line-height: 1.6;
+      line-height: 1.65;
     }
 
     .dp-next strong {
@@ -1707,7 +1734,7 @@
     .ds-row {
       display: flex;
       align-items: stretch;
-      min-height: 48px;
+      min-height: 52px;
       border-bottom: 1px solid #f1f1f1;
     }
 
@@ -1748,7 +1775,7 @@
       border-radius: 12px;
       background: var(--gray-bg);
       border: 1px solid var(--green);
-      padding: 10px 14px;
+      padding: 12px 18px;
       display: flex;
       flex-direction: column;
       justify-content: center;
@@ -1765,9 +1792,10 @@
     }
 
     .ds-card-team {
-      font-size: 16px;
+      font-size: 17px;
       font-weight: 700;
       color: var(--dark);
+      line-height: 1.3;
       display: flex;
       align-items: center;
       gap: 8px;
@@ -1786,9 +1814,9 @@
     }
 
     .ds-card-detail {
-      font-size: 13px;
+      font-size: 14px;
       color: var(--gray-text);
-      margin-top: 3px;
+      margin-top: 4px;
       line-height: 1.4;
     }
 
@@ -1904,21 +1932,25 @@
       }
 
       .dp-time-range {
-        font-size: 28px;
+        font-size: 20px;
         margin-bottom: 16px;
       }
 
       .dp-state-text {
-        font-size: 76px;
+        font-size: 84px;
+      }
+
+      .dp-field .k {
+        font-size: 15px;
       }
 
       .dp-meeting-team {
-        font-size: 38px;
+        font-size: 44px;
       }
 
       .dp-meeting-user,
       .dp-meeting-time {
-        font-size: 26px;
+        font-size: 30px;
       }
 
       .dp-next {
@@ -1941,11 +1973,11 @@
       }
 
       .ds-card-team {
-        font-size: 18px;
+        font-size: 20px;
       }
 
       .ds-card-detail {
-        font-size: 15px;
+        font-size: 16px;
       }
 
       .display-refresh-indicator {
@@ -2001,19 +2033,23 @@
       }
 
       .dp-state-text {
-        font-size: 48px;
+        font-size: 52px;
+      }
+
+      .dp-field .k {
+        font-size: 12px;
       }
 
       .dp-meeting-team {
-        font-size: 28px;
+        font-size: 32px;
       }
 
       .dp-meeting-user {
-        font-size: 20px;
+        font-size: 22px;
       }
 
       .dp-meeting-time {
-        font-size: 20px;
+        font-size: 22px;
       }
 
       .dp-next {
