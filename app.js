@@ -1,7 +1,7 @@
 
 import {
   initNetworkBanner, registerServiceWorker, navigateTo, initInstallBanner,
-  showToast, showLoading, openModal, closeModal, resetAndGoHome,
+  showToast, showLoading, showScreen, openModal, closeModal, resetAndGoHome,
   handleInstallClick, dismissInstallBanner, initModalListeners
 } from './js/ui/common.js';
 import { initDisplayMode, toggleDisplayFullscreen, loadDisplayData } from './js/ui/display.js';
@@ -13,7 +13,7 @@ import {
   confirmPasswordModal, confirmDeleteModal
 } from './js/ui/reservation.js';
 import {
-  openAdminAuth, exitAdminMode, adminRefresh, adminDeletePast, adminAddRoom,
+  openAdminAuth, exitAdminMode, adminRefresh, loadAdminRooms, adminDeletePast, adminAddRoom,
   verifyAdminCode, switchAdminTab, adminFilter, adminDeleteOne,
   adminToggleRoom, adminRemoveRoom, adminEditRoom, adminLoadMetrics,
   adminRunChecks, adminSendMetricsReport,
@@ -85,18 +85,25 @@ function bindUiActions() {
   var adminRoomEditConfirmBtn = byId('adminRoomEditConfirmBtn');
   if (adminRoomEditConfirmBtn) adminRoomEditConfirmBtn.addEventListener('click', handleAdminRoomEditConfirm);
 
-  // 설정 버튼 → 진입 선택 모달
+  // 설정 버튼 → 관리자 코드 인증
   var btnOpenAdminAuth = byId('btnOpenAdminAuth');
-  if (btnOpenAdminAuth) btnOpenAdminAuth.addEventListener('click', function () {
-    openModal('modalEntrySelect');
-  });
+  if (btnOpenAdminAuth) btnOpenAdminAuth.addEventListener('click', openAdminAuth);
 
+  // 인증 성공 후 선택지: 관리자 페이지
   var btnGoAdmin = byId('btnGoAdmin');
-  if (btnGoAdmin) btnGoAdmin.addEventListener('click', function () {
+  if (btnGoAdmin) btnGoAdmin.addEventListener('click', async function () {
     closeModal('modalEntrySelect');
-    openAdminAuth();
+    showScreen('screenAdmin');
+    showLoading(true);
+    try {
+      await adminRefresh();
+      await loadAdminRooms();
+    } finally {
+      showLoading(false);
+    }
   });
 
+  // 인증 성공 후 선택지: 대시보드 층 선택
   var btnGoDashboard = byId('btnGoDashboard');
   if (btnGoDashboard) btnGoDashboard.addEventListener('click', function () {
     closeModal('modalEntrySelect');
