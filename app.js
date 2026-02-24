@@ -85,9 +85,29 @@ function bindUiActions() {
   var adminRoomEditConfirmBtn = byId('adminRoomEditConfirmBtn');
   if (adminRoomEditConfirmBtn) adminRoomEditConfirmBtn.addEventListener('click', handleAdminRoomEditConfirm);
 
-  // Admin mode
+  // 설정 버튼 → 진입 선택 모달
   var btnOpenAdminAuth = byId('btnOpenAdminAuth');
-  if (btnOpenAdminAuth) btnOpenAdminAuth.addEventListener('click', openAdminAuth);
+  if (btnOpenAdminAuth) btnOpenAdminAuth.addEventListener('click', function () {
+    openModal('modalEntrySelect');
+  });
+
+  var btnGoAdmin = byId('btnGoAdmin');
+  if (btnGoAdmin) btnGoAdmin.addEventListener('click', function () {
+    closeModal('modalEntrySelect');
+    openAdminAuth();
+  });
+
+  var btnGoDashboard = byId('btnGoDashboard');
+  if (btnGoDashboard) btnGoDashboard.addEventListener('click', function () {
+    closeModal('modalEntrySelect');
+    openModal('modalDisplayFloor');
+  });
+
+  document.querySelectorAll('.display-floor-btn').forEach(function (btn) {
+    btn.addEventListener('click', function () {
+      window.location.href = '/?display=' + btn.dataset.floor;
+    });
+  });
 
   var btnExitAdminMode = byId('btnExitAdminMode');
   if (btnExitAdminMode) btnExitAdminMode.addEventListener('click', exitAdminMode);
