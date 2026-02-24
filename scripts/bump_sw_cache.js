@@ -28,13 +28,13 @@ if (!m) {
   process.exit(1);
 }
 
-const oldVer = parseInt(m[2], 10);
-const newVer = oldVer + 1;
+const oldVer = m[2];
+const newVer = Math.floor(Date.now() / 1000);
 const newContent = content.replace(PATTERN, `$1${newVer}$3`);
 
 if (dryRun) {
-  console.log(`[dry-run] CACHE_NAME bump: v${oldVer} → v${newVer} (파일 수정 없음)`);
+  console.log(`[dry-run] CACHE_NAME: v${oldVer} → v${newVer} (파일 수정 없음)`);
 } else {
   fs.writeFileSync(SW_FILE, newContent, 'utf8');
-  console.log(`CACHE_NAME bumped: v${oldVer} → v${newVer}  (service-worker.js)`);
+  console.log(`CACHE_NAME set: v${newVer}  (service-worker.js)`);
 }
