@@ -8,8 +8,7 @@ const GET_ACTION_ALLOWLIST = new Set([
   'getOperationalChecks',
   'getOperationalMetrics',
   'getOperationalMetricsReport',
-  'getOperationalMetricsTrend',
-  'getHealth'  // P3-5: 헬스체크 (인증 불필요, DB ping 포함)
+  'getOperationalMetricsTrend'
 ]);
 
 const POST_ACTION_ALLOWLIST = new Set([
@@ -52,13 +51,6 @@ const ADMIN_TOKEN_TTL_SEC = 4 * 60 * 60;
 const AUTH_WINDOW_MS = 10 * 60 * 1000;
 const AUTH_MAX_ATTEMPTS = 10;
 const AUTH_LOCK_MS = 5 * 60 * 1000;
-
-// P3-1: scrypt 파라미터 (N=2^14, 메모리 ~16 MB/해시, Vercel 512 MB 이내)
-const SCRYPT_N = 16384;
-const SCRYPT_R = 8;
-const SCRYPT_P = 1;
-const SCRYPT_KEY_LEN = 32;
-const SCRYPT_SALT_LEN = 16;
 
 function setSecurityHeaders(res) {
   res.setHeader('X-Frame-Options', 'DENY');
@@ -394,7 +386,6 @@ function shouldServeGetFromSupabase(action) {
   if (action === 'getSecurityAlerts') return true;
   if (action === 'getOperationalMetricsTrend') return true;
   if (action === 'getOperationalMetricsReport') return true;
-  if (action === 'getHealth') return true;  // P3-5
   return false;
 }
 
@@ -510,54 +501,9 @@ function verifyAdminTokenLocal(token) {
   }
 }
 
-// P3-1: scrypt 기반 해시 생성 (신규 예약 / 검증 후 업그레이드에 사용)
-// 저장 형식: 'scryptv1:<salt_hex>:<hash_hex>'
 function hashPassword(password) {
   const pepper = String(process.env.PROXY_PASSWORD_PEPPER || '').trim();
-  const salt = randomBytes(SCRYPT_SALT_LEN);
-  const hash = scryptSync(String(password) + '|' + pepper, salt, SCRYPT_KEY_LEN, {
-    N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P
-  });
-  return 'scryptv1:' + salt.toString('hex') + ':' + hash.toString('hex');
-}
-
-// P3-1: scryptv1 / 레거시 SHA256 모두 검증
-function verifyPasswordHash(password, storedHash) {
-  const pepper = String(process.env.PROXY_PASSWORD_PEPPER || '').trim();
-  const stored = String(storedHash || '');
-
-  if (stored.startsWith('scryptv1:')) {
-    const parts = stored.split(':');
-    if (parts.length !== 3) return false;
-    try {
-      const salt = Buffer.from(parts[1], 'hex');
-      const expectedHash = Buffer.from(parts[2], 'hex');
-      if (expectedHash.length !== SCRYPT_KEY_LEN) return false;
-      const inputHash = scryptSync(String(password) + '|' + pepper, salt, SCRYPT_KEY_LEN, {
-        N: SCRYPT_N, r: SCRYPT_R, p: SCRYPT_P
-      });
-      return timingSafeEqual(inputHash, expectedHash);
-    } catch (e) {
-      return false;
-    }
-  }
-
-  // 레거시 SHA256: 64자 hex
-  if (/^[0-9a-f]{64}$/.test(stored)) {
-    const legacyHash = createHash('sha256').update(String(password) + '|' + pepper, 'utf8').digest('hex');
-    try {
-      return timingSafeEqual(Buffer.from(stored, 'hex'), Buffer.from(legacyHash, 'hex'));
-    } catch (e) {
-      return false;
-    }
-  }
-
-  return false;
-}
-
-// P3-1: SHA256 레거시 해시 여부 판별 (업그레이드 대상)
-function isSha256Hash(hash) {
-  return /^[0-9a-f]{64}$/.test(String(hash || ''));
+  return createHash('sha256').update(String(password) + '|' + pepper, 'utf8').digest('hex');
 }
 
 function isPlaceholderHash(hash) {
@@ -836,31 +782,6 @@ async function handleSupabaseGetAction(action, query, context) {
     return { handled: true, status: 500, body: { success: false, error: 'Supabase 구성이 누락되었습니다.' } };
   }
 
-  // P3-5: 헬스체크 — DB ping + 환경변수 상태 (인증 불필요)
-  if (action === 'getHealth') {
-    let dbOk = false;
-    try {
-      await supabaseSelect(config, 'rooms', { select: 'id', limit: '1' });
-      dbOk = true;
-    } catch (e) {
-      // DB ping 실패
-    }
-    const missingEnv = validateEnv();
-    return {
-      handled: true,
-      status: 200,
-      body: {
-        success: true,
-        data: {
-          status: dbOk && missingEnv.length === 0 ? 'ok' : 'degraded',
-          db: dbOk,
-          env: missingEnv.length === 0,
-          ts: new Date().toISOString()
-        }
-      }
-    };
-  }
-
   if (action === 'getRooms') {
     const includeInactive = parseBoolean(query.includeInactive);
     const params = {
@@ -1093,9 +1014,9 @@ async function handleSupabasePostAction(action, body, context) {
     }
 
     let matched = false;
+    const inputHash = hashPassword(password);
     if (!isPlaceholderHash(row.password_hash)) {
-      // P3-1: scryptv1 / 레거시 SHA256 모두 검증
-      matched = verifyPasswordHash(password, row.password_hash);
+      matched = String(row.password_hash || '') === inputHash;
     } else if (isStrictPasswordHashEnabled()) {
       recordAuthFailure('reservation', id, ip);
       await appendAuditLogSafe(config, 'verifyPassword', 'fail', 'user', id, 'strict mode placeholder hash');
@@ -1110,18 +1031,6 @@ async function handleSupabasePostAction(action, body, context) {
       recordAuthFailure('reservation', id, ip);
       await appendAuditLogSafe(config, 'verifyPassword', 'fail', 'user', id, 'password mismatch');
       return { handled: true, status: 200, body: { success: false, error: '비밀번호가 일치하지 않습니다.' } };
-    }
-
-    // P3-1: 검증 성공 시 레거시 SHA256 해시 → scrypt 자동 업그레이드 (best-effort)
-    if (isSha256Hash(row.password_hash)) {
-      try {
-        await supabaseRequest(config, 'PATCH', 'reservations', { id: 'eq.' + id }, {
-          password_hash: hashPassword(password)
-        });
-        await appendAuditLogSafe(config, 'verifyPassword', 'info', 'system', id, 'password hash upgraded to scryptv1');
-      } catch (e) {
-        // 업그레이드 실패는 비치명적: 다음 검증 시 SHA256으로 재시도 가능
-      }
     }
 
     clearAuthFailures('reservation', id, ip);

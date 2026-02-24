@@ -2,6 +2,13 @@
 
 create extension if not exists pgcrypto;
 
+-- P3-2: 시간 중복 예약 원천 차단용 EXCLUSION constraint
+create extension if not exists btree_gist;
+
+-- P3-5: 슬로우쿼리 모니터링 (Supabase 대시보드 → Reports → Query Performance 에서 확인)
+-- Supabase 환경에서는 기본 활성화되어 있으나 명시적으로 선언
+create extension if not exists pg_stat_statements;
+
 create table if not exists rooms (
   id text primary key,
   floor text not null unique,
@@ -30,6 +37,23 @@ create index if not exists idx_reservations_date_floor_start
 
 create index if not exists idx_reservations_date_floor_end
   on reservations(date, floor, end_time);
+
+-- P3-2: 같은 층·날짜에서 시간대 중복 예약 원천 차단 (EXCLUSION constraint)
+-- tsrange '[)' = 시작 포함, 종료 미포함 (반개구간)으로 연속 예약 허용
+alter table reservations
+  drop constraint if exists reservations_no_time_overlap;
+
+alter table reservations
+  add constraint reservations_no_time_overlap
+  exclude using gist (
+    floor with =,
+    date with =,
+    tsrange(
+      (date::text || ' ' || start_time::text)::timestamp,
+      (date::text || ' ' || end_time::text)::timestamp,
+      '[)'
+    ) with &&
+  );
 
 create table if not exists audit_logs (
   id bigint generated always as identity primary key,
