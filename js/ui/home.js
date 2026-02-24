@@ -13,16 +13,16 @@ export async function loadRoomsForHome() {
         var res = await apiGet('getRooms', {});
         if (res.success) {
             roomList = (res.data || []).filter(function (r) { return r['활성화'] === true; });
-            renderFloorGrid();
+            _renderAndAutoSelect();
         } else {
             // 실패 시 기본 회의실 표시
             roomList = getDefaultRooms();
-            renderFloorGrid();
+            _renderAndAutoSelect();
         }
     } catch (e) {
         // 오프라인 시 기본값 사용
         roomList = getDefaultRooms();
-        renderFloorGrid();
+        _renderAndAutoSelect();
     }
 }
 
@@ -33,6 +33,19 @@ function getDefaultRooms() {
         { '회의실ID': '8F', '층': '8F', '이름': '회의실', '활성화': true },
         { '회의실ID': '9F', '층': '9F', '이름': '회의실', '활성화': true }
     ];
+}
+
+function applyFloorFromUrl() {
+    var params = new URLSearchParams(window.location.search);
+    var floor = (params.get('floor') || '').trim().toUpperCase();
+    if (!floor) return;
+    var card = document.querySelector('.floor-card[data-floor="' + floor + '"]');
+    if (card) selectFloor(card);
+}
+
+function _renderAndAutoSelect() {
+    renderFloorGrid();
+    applyFloorFromUrl();
 }
 
 function renderFloorGrid() {

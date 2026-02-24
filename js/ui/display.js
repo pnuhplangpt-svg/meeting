@@ -15,6 +15,16 @@ var displayFailureCount = 0;
 var displayRoomNameCache = null;
 var displayRoomNameCacheAt = 0;
 var DISPLAY_ROOMS_CACHE_TTL = 10 * 60 * 1000; // 10분
+var DISPLAY_SOON_THRESHOLD_MIN = 30; // "곧 시작" 임계값(분)
+var _displayListenersAttached = false;
+var _qrAreaNode = null;
+
+function _onVisibilityChange() {
+    if (!document.hidden && displayFloor) {
+        scheduleNextDisplayLoad(0);
+        requestWakeLock();
+    }
+}
 
 export function initDisplayMode() {
     var params = new URLSearchParams(window.location.search);
@@ -61,16 +71,12 @@ export function initDisplayMode() {
     // 전체화면 진입 안내 오버레이 (비 fullscreen 상태일 때만)
     showFullscreenOverlay();
 
-    // 전체화면 상태 변경 감지 → 아이콘 토글
-    document.addEventListener('fullscreenchange', updateFullscreenIcon);
-
-    // 탭 비활성→활성 복귀 시 즉시 갱신 + Wake Lock 재요청
-    document.addEventListener('visibilitychange', function () {
-        if (!document.hidden && displayFloor) {
-            scheduleNextDisplayLoad(0);
-            requestWakeLock();
-        }
-    });
+    // 이벤트 리스너 중복 등록 방지
+    if (!_displayListenersAttached) {
+        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('visibilitychange', _onVisibilityChange);
+        _displayListenersAttached = true;
+    }
 
     return true;
 }
@@ -155,6 +161,7 @@ export async function loadDisplayData() {
                         room['층'] + ' ' + room['이름'];
                 } else {
                     renderDisplayUnavailable(displayFloor + ' 회의실이 비활성 상태이거나 존재하지 않습니다.');
+                    return;
                 }
             }
         } catch (e) { }
@@ -249,7 +256,7 @@ function renderDisplayStatus(reservations) {
     } else if (next) {
         var diffMin = parseTimeToMinutes(next['시작시간']) - parseTimeToMinutes(currentTime);
 
-        if (diffMin <= 30) {
+        if (diffMin <= DISPLAY_SOON_THRESHOLD_MIN) {
             container.classList.add('state-soon');
             html +=
                 '<span class="dp-state-badge soon">● 곧 시작</span>' +
@@ -284,27 +291,31 @@ function renderDisplayStatus(reservations) {
             '</div>';
     }
 
-    var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '');
-
-    html +=
-        '<div class="dp-qr-area">' +
-        '<div id="dpQrCode" class="dp-qr-img"></div>' +
-        '<div class="dp-qr-text">QR 스캔하여 예약하기</div>' +
-        '</div>';
-
     container.innerHTML = html;
 
-    var qrEl = document.getElementById('dpQrCode');
-    if (qrEl && window.QRCode) {
-        qrEl.innerHTML = '';
-        new QRCode(qrEl, {
-            text: qrUrl,
-            width: 200,
-            height: 200,
-            correctLevel: QRCode.CorrectLevel.M
-        });
+    if (!_qrAreaNode) {
+        // 최초 1회만 QR 노드 생성
+        var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '')
+                  + '?floor=' + encodeURIComponent(displayFloor);
+        _qrAreaNode = document.createElement('div');
+        _qrAreaNode.className = 'dp-qr-area';
+        _qrAreaNode.innerHTML = '<div id="dpQrCode" class="dp-qr-img"></div>'
+                              + '<div class="dp-qr-text">QR 스캔하여 예약하기</div>';
+        container.appendChild(_qrAreaNode);
+        var qrEl = document.getElementById('dpQrCode');
+        if (qrEl && window.QRCode) {
+            new QRCode(qrEl, {
+                text: qrUrl,
+                width: 200,
+                height: 200,
+                correctLevel: QRCode.CorrectLevel.M
+            });
+        } else if (qrEl) {
+            qrEl.textContent = 'QR 라이브러리를 불러오지 못했습니다.';
+        }
     } else {
-        if (qrEl) qrEl.textContent = 'QR 라이브러리를 불러오지 못했습니다.';
+        // 이후에는 기존 노드 재부착 (QR 재생성 없음)
+        container.appendChild(_qrAreaNode);
     }
 }
 
@@ -324,7 +335,9 @@ function formatMinutesToTime(min) {
 function formatDiffLabel(diffMin) {
     if (diffMin <= 0) return '곧 시작';
     if (diffMin >= 60) {
-        return Math.floor(diffMin / 60) + '시간 ' + (diffMin % 60) + '분 후';
+        var h = Math.floor(diffMin / 60);
+        var m = diffMin % 60;
+        return m === 0 ? h + '시간 후' : h + '시간 ' + m + '분 후';
     }
     return diffMin + '분 후';
 }
