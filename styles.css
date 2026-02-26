@@ -1494,23 +1494,31 @@
       display: flex;
       align-items: center;
       gap: 16px;
+      min-width: 0;
+      flex: 1;
     }
 
     .display-header .dh-floor {
       font-size: 26px;
       font-weight: 800;
       color: var(--green);
+      flex-shrink: 0;
     }
 
     .display-header .dh-name {
       font-size: 16px;
       color: var(--gray-text);
+      min-width: 0;
+      overflow: hidden;
+      white-space: nowrap;
+      text-overflow: ellipsis;
     }
 
     .display-header .dh-right {
       display: flex;
       align-items: center;
-      gap: 20px;
+      gap: clamp(8px, 1.2vw, 20px);
+      flex-shrink: 0;
     }
 
     .display-header .dh-date {
@@ -1530,8 +1538,8 @@
       background: var(--white);
       border: 1px solid var(--green);
       color: var(--green);
-      width: 42px;
-      height: 42px;
+      width: 44px;
+      height: 44px;
       border-radius: 12px;
       display: flex;
       align-items: center;
@@ -2055,6 +2063,98 @@
     }
 
 
+    @media (orientation: landscape) and (max-width: 1000px) {
+      .display-header {
+        padding: 12px 16px;
+      }
+
+      .display-header .dh-date {
+        display: none;
+      }
+
+      .display-header .dh-clock {
+        font-size: 26px;
+      }
+    }
+
+    @media (orientation: landscape) and (max-height: 560px) {
+      .display-body {
+        gap: 10px;
+        padding: 10px;
+        grid-template-columns: 52fr 48fr;
+      }
+
+      .display-panel-status {
+        padding: 20px 24px;
+      }
+
+      .dp-state-badge {
+        font-size: 13px;
+        margin-bottom: 8px;
+      }
+
+      .dp-time-range {
+        font-size: 14px;
+        margin-bottom: 8px;
+      }
+
+      .dp-state-text {
+        font-size: clamp(38px, 5.2vw, 58px);
+      }
+
+      .dp-meeting-team {
+        font-size: clamp(24px, 3.2vw, 34px);
+      }
+
+      .dp-meeting-user,
+      .dp-meeting-time {
+        font-size: clamp(16px, 2.5vw, 22px);
+      }
+
+      .dp-next {
+        margin-top: 14px;
+        padding-top: 10px;
+        font-size: clamp(14px, 2vw, 18px);
+      }
+
+      .ds-timeline-header {
+        padding: 12px 14px 10px;
+        font-size: 16px;
+      }
+
+      .ds-row-time {
+        width: 66px;
+        min-width: 66px;
+        font-size: 14px;
+      }
+
+      .ds-card {
+        padding: 8px 10px;
+      }
+
+      .ds-card-team {
+        font-size: 15px;
+      }
+
+      .ds-card-detail {
+        font-size: 12px;
+      }
+
+      .dp-qr-area {
+        margin-top: 10px;
+        padding-top: 10px;
+      }
+
+      .dp-qr-img {
+        width: 56px;
+        height: 56px;
+      }
+
+      .dp-qr-text {
+        font-size: 12px;
+      }
+    }
+
     @media (orientation: landscape) and (min-width: 1024px) {
       .display-body {
         grid-template-columns: 60fr 40fr;
@@ -2072,15 +2172,15 @@
        ═══════════════════════════════════════════════════ */
     @media (orientation: portrait) {
       .display-body {
-        flex-direction: column;
+        display: grid;
+        grid-template-rows: minmax(260px, 40dvh) minmax(0, 1fr);
         padding: 10px;
         gap: 10px;
       }
 
       .display-panel-status {
-        flex: 1;
-        min-height: 0;
-        max-height: none;
+        min-height: 260px;
+        max-height: 40dvh;
         padding: 24px 28px;
         overflow-y: auto;
         display: flex;
@@ -2089,7 +2189,7 @@
       }
 
       .dp-state-text {
-        font-size: 52px;
+        font-size: clamp(38px, 7vw, 52px);
       }
 
       .dp-field .k {
@@ -2097,19 +2197,19 @@
       }
 
       .dp-meeting-team {
-        font-size: 32px;
+        font-size: clamp(24px, 5vw, 32px);
       }
 
       .dp-meeting-user {
-        font-size: 22px;
+        font-size: clamp(17px, 3.8vw, 22px);
       }
 
       .dp-meeting-time {
-        font-size: 22px;
+        font-size: clamp(17px, 3.8vw, 22px);
       }
 
       .dp-next {
-        font-size: 19px;
+        font-size: clamp(15px, 3.4vw, 19px);
         margin-top: 18px;
         padding-top: 14px;
       }
@@ -2131,7 +2231,7 @@
       .ds-row-time {
         width: 68px;
         min-width: 68px;
-        font-size: 14px;
+        font-size: clamp(12px, 3vw, 14px);
       }
 
       .dp-qr-area {
@@ -2147,5 +2247,97 @@
 
       .dp-qr-text {
         font-size: 14px;
+      }
+    }
+
+    @media (orientation: portrait) and (max-width: 430px) {
+      .display-header {
+        padding: 12px 14px;
+      }
+
+      .display-header .dh-floor {
+        font-size: 22px;
+      }
+
+      .display-header .dh-name {
+        font-size: 14px;
+      }
+
+      .display-header .dh-date {
+        display: none;
+      }
+
+      .display-header .dh-clock {
+        font-size: 24px;
+      }
+
+      .display-body {
+        grid-template-rows: minmax(220px, 37dvh) minmax(0, 1fr);
+        padding: 8px;
+        gap: 8px;
+      }
+
+      .display-panel-status {
+        min-height: 220px;
+        max-height: 37dvh;
+        padding: 16px 18px;
+      }
+
+      .dp-state-badge {
+        font-size: 12px;
+        padding: 4px 8px;
+      }
+
+      .dp-field {
+        margin-top: 14px;
+        gap: 10px;
+      }
+
+      .ds-timeline-header {
+        padding: 10px 12px 8px;
+        font-size: 15px;
+      }
+
+      .ds-row-time {
+        width: 60px;
+        min-width: 60px;
+      }
+
+      .ds-row-content {
+        padding: 3px 6px;
+      }
+
+      .ds-card {
+        padding: 8px 10px;
+      }
+
+      .dp-qr-area {
+        gap: 10px;
+      }
+
+      .dp-qr-img {
+        width: 52px;
+        height: 52px;
+      }
+    }
+
+    @media (orientation: portrait) and (min-width: 768px) {
+      .display-body {
+        grid-template-rows: minmax(300px, 44dvh) minmax(0, 1fr);
+        padding: 14px;
+        gap: 14px;
+      }
+
+      .display-panel-status {
+        min-height: 300px;
+        max-height: 44dvh;
+      }
+
+      .dp-state-text {
+        font-size: clamp(46px, 6.2vw, 66px);
+      }
+
+      .ds-timeline-header {
+        font-size: 20px;
       }
     }

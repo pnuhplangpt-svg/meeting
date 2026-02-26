@@ -18,12 +18,23 @@ var DISPLAY_ROOMS_CACHE_TTL = 10 * 60 * 1000; // 10분
 var DISPLAY_SOON_THRESHOLD_MIN = 30; // "곧 시작" 임계값(분)
 var _displayListenersAttached = false;
 var _qrAreaNode = null;
+var _displayReflowTimer = null;
 
 function _onVisibilityChange() {
     if (!document.hidden && displayFloor) {
         scheduleNextDisplayLoad(0);
         requestWakeLock();
+        scheduleDisplayReflow();
     }
+}
+
+function scheduleDisplayReflow() {
+    if (_displayReflowTimer) {
+        clearTimeout(_displayReflowTimer);
+    }
+    _displayReflowTimer = setTimeout(function () {
+        scrollToCurrentTime(document.getElementById('displayTimeline'));
+    }, 120);
 }
 
 export function initDisplayMode() {
@@ -73,8 +84,13 @@ export function initDisplayMode() {
 
     // 이벤트 리스너 중복 등록 방지
     if (!_displayListenersAttached) {
-        document.addEventListener('fullscreenchange', updateFullscreenIcon);
+        document.addEventListener('fullscreenchange', function () {
+            updateFullscreenIcon();
+            scheduleDisplayReflow();
+        });
         document.addEventListener('visibilitychange', _onVisibilityChange);
+        window.addEventListener('resize', scheduleDisplayReflow, { passive: true });
+        window.addEventListener('orientationchange', scheduleDisplayReflow);
         _displayListenersAttached = true;
     }
 
@@ -441,6 +457,7 @@ function renderDisplaySchedule(reservations) {
 
     container.innerHTML = html;
     scrollToCurrentTime(container);
+    scheduleDisplayReflow();
 }
 
 // 화면 꺼짐 방지 (Wake Lock API)
