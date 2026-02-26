@@ -309,6 +309,31 @@ function renderDisplayStatus(reservations) {
 
     container.innerHTML = html;
 
+    if (current) {
+        var layout = document.createElement('div');
+        layout.className = 'dp-status-layout';
+
+        var currentCol = document.createElement('div');
+        currentCol.className = 'dp-current-col';
+
+        var nextCol = document.createElement('div');
+        nextCol.className = 'dp-next-col';
+
+        ['.dp-state-badge', '.dp-time-range', '.dp-state-text', '.dp-meeting-info'].forEach(function (sel) {
+            var node = container.querySelector(sel);
+            if (node) currentCol.appendChild(node);
+        });
+
+        var nextNode = container.querySelector('.dp-next');
+        if (nextNode) {
+            nextCol.appendChild(nextNode);
+        }
+
+        layout.appendChild(currentCol);
+        layout.appendChild(nextCol);
+        container.appendChild(layout);
+    }
+
     if (!_qrAreaNode) {
         // 최초 1회만 QR 노드 생성
         var qrUrl = window.location.origin + window.location.pathname.replace(/\?.*$/, '')
@@ -317,7 +342,8 @@ function renderDisplayStatus(reservations) {
         _qrAreaNode.className = 'dp-qr-area';
         _qrAreaNode.innerHTML = '<div id="dpQrCode" class="dp-qr-img"></div>'
                               + '<div class="dp-qr-text">QR 스캔하여 예약하기</div>';
-        container.appendChild(_qrAreaNode);
+        var qrHost = container.querySelector('.dp-next-col') || container;
+        qrHost.appendChild(_qrAreaNode);
         var qrEl = document.getElementById('dpQrCode');
         if (qrEl && window.QRCode) {
             new QRCode(qrEl, {
@@ -331,7 +357,8 @@ function renderDisplayStatus(reservations) {
         }
     } else {
         // 이후에는 기존 노드 재부착 (QR 재생성 없음)
-        container.appendChild(_qrAreaNode);
+        var qrHostExisting = container.querySelector('.dp-next-col') || container;
+        qrHostExisting.appendChild(_qrAreaNode);
     }
 }
 

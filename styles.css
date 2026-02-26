@@ -1603,7 +1603,7 @@
       min-width: 0;
       display: flex;
       flex-direction: column;
-      justify-content: center;
+      justify-content: flex-start;
       padding: 32px 36px;
       position: relative;
       background: var(--gray-bg);
@@ -1730,6 +1730,23 @@
     .dp-next strong {
       color: var(--dark);
       font-size: 24px;
+    }
+
+    .dp-status-layout {
+      display: block;
+    }
+
+    .dp-current-col,
+    .dp-next-col {
+      min-width: 0;
+    }
+
+    .dp-next-col {
+      margin-top: 20px;
+    }
+
+    .dp-next-col .dp-next {
+      margin-top: 0;
     }
 
     /* QR 코드 영역 */
@@ -1995,6 +2012,46 @@
         padding: 32px 40px;
       }
 
+      .dp-status-layout {
+        display: grid;
+        grid-template-columns: 64fr 36fr;
+        gap: 22px;
+        align-items: start;
+        min-height: 0;
+      }
+
+      .dp-next-col {
+        margin-top: 0;
+        padding-left: 20px;
+        border-left: 1px solid var(--gray-light);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+      }
+
+      .dp-next-col .dp-next {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        font-size: 20px;
+        line-height: 1.55;
+      }
+
+      .dp-next-col .dp-next strong {
+        font-size: 26px;
+      }
+
+      .dp-next-col .dp-next-title {
+        font-size: 16px;
+        font-weight: 700;
+        margin-bottom: 8px;
+      }
+
+      .dp-next-col .dp-qr-area {
+        margin-top: auto;
+        padding-top: 14px;
+      }
+
       .dp-time-range {
         font-size: 20px;
         margin-bottom: 16px;
@@ -2049,7 +2106,7 @@
       }
 
       .dp-qr-area {
-        margin-top: auto;
+        margin-top: 16px;
       }
 
       .dp-qr-img {
@@ -2088,6 +2145,15 @@
         padding: 20px 24px;
       }
 
+      .dp-status-layout {
+        grid-template-columns: 60fr 40fr;
+        gap: 14px;
+      }
+
+      .dp-next-col {
+        padding-left: 12px;
+      }
+
       .dp-state-badge {
         font-size: 13px;
         margin-bottom: 8px;
@@ -2115,6 +2181,18 @@
         margin-top: 14px;
         padding-top: 10px;
         font-size: clamp(14px, 2vw, 18px);
+      }
+
+      .dp-next-col .dp-next {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        font-size: 14px;
+        line-height: 1.45;
+      }
+
+      .dp-next-col .dp-next strong {
+        font-size: 18px;
       }
 
       .ds-timeline-header {
@@ -2185,7 +2263,7 @@
         overflow-y: auto;
         display: flex;
         flex-direction: column;
-        justify-content: center;
+        justify-content: flex-start;
       }
 
       .dp-state-text {
