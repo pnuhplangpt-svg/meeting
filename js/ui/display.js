@@ -396,6 +396,12 @@ function calculateTimelineHeight(durationMin) {
 
 function scrollToCurrentTime(container) {
     if (!container) return;
+    var activeReservationRow = container.querySelector('.ds-row.active-reservation');
+    if (activeReservationRow) {
+        container.scrollTop = Math.max(0, activeReservationRow.offsetTop - 8);
+        return;
+    }
+
     var nowRow = container.querySelector('.ds-row.now');
     if (!nowRow) return;
     var target = nowRow.offsetTop - (container.clientHeight * 0.35);
@@ -452,7 +458,8 @@ function renderDisplaySchedule(reservations) {
         if (isNow) cardClass += ' active';
         else if (isPast) cardClass += ' past';
 
-        html += '<div class="ds-row' + (isNow ? ' now' : '') + '" style="min-height:' +
+        var rowClass = 'ds-row has-reservation' + (isNow ? ' now active-reservation' : '');
+        html += '<div class="' + rowClass + '" style="min-height:' +
             calculateTimelineHeight(endMin - startMin) + 'px">' +
             '<div class="ds-row-time">' + formatMinutesToTime(startMin) + '</div>' +
             '<div class="ds-row-content">' +

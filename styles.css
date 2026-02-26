@@ -2249,6 +2249,39 @@
        세로 모드 (Portrait)
        ═══════════════════════════════════════════════════ */
     @media (orientation: portrait) {
+      .dp-status-layout {
+        display: grid;
+        grid-template-columns: 58fr 42fr;
+        gap: 12px;
+        align-items: start;
+      }
+
+      .dp-next-col {
+        margin-top: 0;
+        padding-left: 10px;
+        border-left: 1px solid var(--gray-light);
+        display: flex;
+        flex-direction: column;
+      }
+
+      .dp-next-col .dp-next {
+        margin-top: 0;
+        padding-top: 0;
+        border-top: none;
+        font-size: clamp(13px, 2.8vw, 16px);
+        line-height: 1.45;
+      }
+
+      .dp-next-col .dp-next strong {
+        font-size: clamp(16px, 3.4vw, 20px);
+      }
+
+      .dp-next-col .dp-next-title {
+        font-size: clamp(13px, 2.8vw, 15px);
+        font-weight: 700;
+        margin-bottom: 6px;
+      }
+
       .display-body {
         display: grid;
         grid-template-rows: minmax(260px, 40dvh) minmax(0, 1fr);
@@ -2318,6 +2351,11 @@
         gap: 12px;
       }
 
+      .dp-next-col .dp-qr-area {
+        margin-top: auto;
+        padding-top: 12px;
+      }
+
       .dp-qr-img {
         width: 64px;
         height: 64px;
@@ -2329,6 +2367,15 @@
     }
 
     @media (orientation: portrait) and (max-width: 430px) {
+      .dp-status-layout {
+        grid-template-columns: 56fr 44fr;
+        gap: 8px;
+      }
+
+      .dp-next-col {
+        padding-left: 8px;
+      }
+
       .display-header {
         padding: 12px 14px;
       }
@@ -2391,6 +2438,10 @@
 
       .dp-qr-area {
         gap: 10px;
+      }
+
+      .dp-next-col .dp-qr-area {
+        margin-top: 10px;
       }
 
       .dp-qr-img {
