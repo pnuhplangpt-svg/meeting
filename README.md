@@ -48,6 +48,7 @@ Operational metrics now support report preview/send for admins.
 - `GET action=getOperationalMetricsReport&adminToken=...`: returns report text preview and threshold/recipient info
 - `GET action=getOperationalMetricsTrend&adminToken=...`: returns 30-day daily trend + 7-day moving average for auth failures
 - `POST action=sendOperationalMetricsReport`: sends report email immediately (admin token required)
+- `POST action=notifyAppLaunch`: sends app launch notification to Slack webhook when configured
 - `runScheduledOperationalMetricsReport()`: trigger-safe function for time-based automatic sending
 
 
@@ -63,6 +64,7 @@ Required Vercel environment variables:
 - `PROXY_TOKEN_SECRET`: proxy token signing secret
 - `SUPABASE_STRICT_PASSWORD_HASH`: `true`면 placeholder 해시 예약을 차단
 - `PROXY_ADMIN_CODE`: 6자리 관리자 코드
+- `SLACK_APP_LAUNCH_WEBHOOK_URL`: Slack incoming webhook URL for app launch notifications (optional)
 
 Proxy hardening in `api/proxy`:
 - GET/POST action allowlist enforcement

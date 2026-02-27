@@ -4,6 +4,7 @@ import { state } from './state.js';
 
 const API_URL = '/api/proxy';
 var API_TIMEOUT_MS = 10000;
+const APP_LAUNCH_SENT_KEY = 'meeting_app_launch_sent_v1';
 
 async function fetchWithTimeoutAndRetry(url, options, retries) {
     var attempts = retries == null ? 0 : retries;
@@ -81,4 +82,37 @@ export async function apiPost(body) {
         throw new Error('JSON parse error (' + action + ')');
     }
     return payload;
+}
+
+export async function notifyAppLaunch(meta = {}) {
+    try {
+        if (sessionStorage.getItem(APP_LAUNCH_SENT_KEY) === '1') {
+            return { success: true, skipped: true };
+        }
+    } catch (e) {
+        // ignore storage access errors
+    }
+
+    const body = {
+        action: 'notifyAppLaunch',
+        page: window.location.pathname || '/',
+        query: window.location.search || '',
+        referrer: document.referrer || '',
+        tz: Intl.DateTimeFormat().resolvedOptions().timeZone || '',
+        userAgent: navigator.userAgent || ''
+    };
+
+    if (meta && typeof meta === 'object') {
+        Object.assign(body, meta);
+    }
+
+    const result = await apiPost(body);
+    if (result && result.success) {
+        try {
+            sessionStorage.setItem(APP_LAUNCH_SENT_KEY, '1');
+        } catch (e) {
+            // ignore storage access errors
+        }
+    }
+    return result;
 }

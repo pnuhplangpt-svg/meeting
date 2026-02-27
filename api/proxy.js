@@ -21,7 +21,8 @@ const POST_ACTION_ALLOWLIST = new Set([
   'addRoom',
   'updateRoom',
   'deleteRoom',
-  'sendOperationalMetricsReport'
+  'sendOperationalMetricsReport',
+  'notifyAppLaunch'
 ]);
 
 const GET_ACTION_REQUIRED_PARAMS = {
@@ -42,7 +43,8 @@ const POST_ACTION_REQUIRED_FIELDS = {
   addRoom: ['adminToken', 'floor', 'name'],
   updateRoom: ['adminToken', 'roomId'],
   deleteRoom: ['adminToken', 'roomId'],
-  sendOperationalMetricsReport: ['adminToken']
+  sendOperationalMetricsReport: ['adminToken'],
+  notifyAppLaunch: []
 };
 
 const RATE_LIMIT_WINDOW_MS = 60 * 1000;
@@ -276,6 +278,31 @@ function sanitizeText(value, maxLength) {
   return v.substring(0, maxLength);
 }
 
+function getSlackWebhookUrl() {
+  return String(process.env.SLACK_APP_LAUNCH_WEBHOOK_URL || '').trim();
+}
+
+function isSlackAppLaunchEnabled() {
+  return !!getSlackWebhookUrl();
+}
+
+async function sendSlackAppLaunchNotification(payload) {
+  const webhookUrl = getSlackWebhookUrl();
+  if (!webhookUrl) return false;
+
+  const res = await fetch(webhookUrl, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify(payload || {})
+  });
+
+  if (!res.ok) {
+    throw new Error('Slack webhook request failed (' + res.status + ')');
+  }
+
+  return true;
+}
+
 function isValidDateString(v) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(v)) return false;
   const d = new Date(v + 'T00:00:00Z');
@@ -408,6 +435,7 @@ function shouldServePostFromSupabase(action) {
   if (action === 'deleteRoom') return true;
   if (action === 'verifyAdmin') return true;
   if (action === 'sendOperationalMetricsReport') return true;
+  if (action === 'notifyAppLaunch') return true;
   return false;
 }
 
@@ -965,6 +993,30 @@ async function handleSupabaseGetAction(action, query, context) {
 }
 
 async function handleSupabasePostAction(action, body, context) {
+  if (action === 'notifyAppLaunch') {
+    if (!isSlackAppLaunchEnabled()) {
+      return { handled: true, status: 200, body: { success: true, skipped: true, message: 'Slack app launch webhook not configured.' } };
+    }
+
+    const ip = sanitizeText(context && context.ip ? context.ip : 'unknown', 100);
+    const host = sanitizeText(context && context.host ? context.host : '', 120);
+    const page = sanitizeText(body && body.page ? body.page : '/', 200);
+    const query = sanitizeText(body && body.query ? body.query : '', 400);
+    const userAgent = sanitizeText(body && body.userAgent ? body.userAgent : (context && context.userAgent ? context.userAgent : ''), 300);
+    const timeIso = new Date().toISOString();
+    const text = [
+      ':rocket: Meeting app launch detected',
+      '- time: ' + timeIso,
+      '- host: ' + (host || '-'),
+      '- page: ' + page + (query || ''),
+      '- ip: ' + ip,
+      '- userAgent: ' + (userAgent || '-')
+    ].join('\n');
+
+    await sendSlackAppLaunchNotification({ text });
+    return { handled: true, status: 200, body: { success: true } };
+  }
+
   const config = getSupabaseConfig();
   if (!config.url || !config.serviceRoleKey) {
     return { handled: true, status: 500, body: { success: false, error: 'Supabase 구성이 누락되었습니다.' } };
@@ -1348,7 +1400,11 @@ export default async function handler(req, res) {
 
     try {
       if (shouldServePostFromSupabase(action)) {
-        const supabaseResult = await handleSupabasePostAction(action, parsed, { ip: getClientIp(req) });
+        const supabaseResult = await handleSupabasePostAction(action, parsed, {
+          ip: getClientIp(req),
+          host: String(req.headers.host || ''),
+          userAgent: String(req.headers['user-agent'] || '')
+        });
         if (supabaseResult.handled) {
           return res.status(supabaseResult.status).json(supabaseResult.body);
         }

@@ -19,12 +19,15 @@ import {
   adminRunChecks, adminSendMetricsReport,
   handleAdminDeleteConfirm, handleAdminRoomEditConfirm
 } from './js/ui/admin.js';
+import { notifyAppLaunch } from './js/api.js';
 
 // ═══════════════════════════════════════════════════════
 // 초기화
 // ═══════════════════════════════════════════════════════
 document.addEventListener('DOMContentLoaded', function () {
   // 디스플레이 모드 감지 (?display=6F 등)
+  notifyAppLaunch().catch(function () { });
+
   if (initDisplayMode()) {
     // 디스플레이 모드: 일반 UI 초기화 건너뜀
     initNetworkBanner();
